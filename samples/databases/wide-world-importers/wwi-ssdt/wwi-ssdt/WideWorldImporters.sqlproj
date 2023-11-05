@@ -17,7 +17,7 @@
     <ModelCollation>1033,CI</ModelCollation>
     <DefaultFileStructure>BySchemaAndSchemaType</DefaultFileStructure>
     <DeployToDatabase>True</DeployToDatabase>
-    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <TargetLanguage>CS</TargetLanguage>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <SqlServerVerification>False</SqlServerVerification>
@@ -846,5 +846,6 @@
     <None Include="PostDeploymentScripts\pds106-ins-dls-areacode.sql" />
     <None Include="PostDeploymentScripts\pds400-ins-unkown-orderline.sql" />
     <None Include="PostDeploymentScripts\pds410-update-archive-tables.sql" />
+    <None Include="WideWorldImporters.publish.xml" />
   </ItemGroup>
 </Project>
