@@ -1,6 +1,6 @@
 ![](../media/solutions-microsoft-logo-small.png)
 
-# How to Enable Azure Dashboard for ARC SQL
+# How to Enable Azure Dashboard for SQL Server enabled by Azure Arc
 This article will show you how to use the dashboard .json files in this directory to create custom dashboards in the [Azure portal](https://learn.microsoft.com/en-us/azure/azure-portal/azure-portal-dashboards).
 
 ![](./img/Dashboard.png)
