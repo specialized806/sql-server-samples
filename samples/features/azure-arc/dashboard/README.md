@@ -21,6 +21,10 @@ This article will show you how to use the dashboard .json files in this director
  - **Arc - SQL Server Inventory:** A dashboard showing detailed stats about SQL Server instances and servers hosting SQL Server.
  - **SQL Server Instances:** A dashboard focused on SQL Server inventory details about SQL Server instances and databases.
 
+# Acknowledgements
+Many thanks to the following contributors that provided content to this part of the SQL Server samples repository.
+- [Tps99](https://github.com/tps99)
+
 <a name=disclaimers></a>
 ## Disclaimers
 The code included in these samples are not intended to be a set of best practices on how to build scalable enterprise grade applications. This is beyond the scope of this quick start sample.
