@@ -31,7 +31,7 @@ The script accepts the following command line parameters:
 |-ResourceGroup |resource_group_name|Optional: Limits the scope  to a specific resource group|
 |-MachineName |machine_name|Optional: Limits the scope to a specific machine|
 |-LicenceType | "Paid", "PAYG" or "LicenseOnly"| Optional: Sets the license type to the specified value |
-|-EnableESU | "Yes", "No" | Optional. Enables the ESU policy the value is "Yrs" or disables it if the value is "No". To enable, the license type must be "Paid" or "PAYG"|
+|-EnableESU | "Yes", "No" | Optional. Enables the ESU policy the value is "Yes" or disables it if the value is "No". To enable, the license type must be "Paid" or "PAYG"|
 |-Force| |Optional. Forces the change of the license type to the specified value on all installed extensions. If -Force is not specified, the -LicenseType value is set only if undefined. Ignored if -LicenseType  is not specified|
 
 <sup>1</sup>You can create a .csv file using the following command and then edit to remove the subscriptions you don't  want to scan.
