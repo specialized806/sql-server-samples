@@ -6,6 +6,9 @@ The raw SQL files are here: https://github.com/microsoft/sql-server-samples/blob
 
 To setup, you need an environment variable named ConnectContosoHR that is the connection string to your Azure SQL DB instance. eg; `Server=tcp:XXXXXXXserver.database.windows.net;Database=ContosoHR;`
 
+To set the environment variable, open a Command Prompt and use the setx command eg;
+setx ConnectContosoHR=`Server=tcp:XXXXXXXserver.database.windows.net;Database=ContosoHR;`
+
 Don't put the enclave-specific settings in the connection string, these are added by the code so you can demo with- and without-AE.
 
 When the code runs, there's a flag in the code:
