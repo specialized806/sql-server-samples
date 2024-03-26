@@ -1,10 +1,9 @@
-﻿
-CREATE PROCEDURE DataLoadSimulation.PopulateDataToCurrentDate
-@AverageNumberOfCustomerOrdersPerDay int,
-@SaturdayPercentageOfNormalWorkDay int,
-@SundayPercentageOfNormalWorkDay int,
-@IsSilentMode bit,
-@AreDatesPrinted bit
+﻿CREATE PROCEDURE [DataLoadSimulation].[PopulateDataTo180DaysAgo]
+@AverageNumberOfCustomerOrdersPerDay int = 30,
+@SaturdayPercentageOfNormalWorkDay int = 25,
+@SundayPercentageOfNormalWorkDay int = 0,
+@IsSilentMode bit = 0,
+@AreDatesPrinted bit = 1
 AS
 BEGIN
     SET NOCOUNT ON;
