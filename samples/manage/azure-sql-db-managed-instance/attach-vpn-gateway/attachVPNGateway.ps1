@@ -19,7 +19,7 @@ if ($clientCertificatePassword -eq '' -or ($null -eq $clientCertificatePassword)
 
 function VerifyPSVersion {
     Write-Host "Verifying PowerShell version."
-    if ($PSVersionTable.PSEdition -eq "Desktop") {
+    if ($PSVersionTable.PSEdition -eq "Desktop" -or $PSVersionTable.PSEdition -eq "Core" ) {
         if (($PSVersionTable.PSVersion.Major -ge 6) -or
             (($PSVersionTable.PSVersion.Major -eq 5) -and ($PSVersionTable.PSVersion.Minor -ge 1))) {
             Write-Host "PowerShell version verified." -ForegroundColor Green
@@ -219,7 +219,7 @@ function CreateCerificateOpenSsl() {
 
 function CreateCertificate() {
     Write-Host "Creating certificate."
-    if ($PSVersionTable.PSEdition -eq "Desktop") {
+    if ($PSVersionTable.PSEdition -eq "Desktop" -or $PSVersionTable.PSEdition -eq "Core" ) {
         return CreateCerificateWindows
     }
     else {

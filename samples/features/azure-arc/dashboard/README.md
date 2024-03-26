@@ -20,10 +20,12 @@ This article will show you how to use the dashboard .json files in this director
  - **Arc - Estate Profile:** A dashboard showing summary and detailed view of SQL Server, Windows Server, and Linux servers enabled by Azure Arc.
  - **Arc - SQL Server Inventory:** A dashboard showing detailed stats about SQL Server instances and servers hosting SQL Server.
  - **SQL Server Instances:** A dashboard focused on SQL Server inventory details about SQL Server instances and databases.
+ - **Arc - Server Deployment:** A dashboard showing a mix of server and SQL Server details, especially useful during initial onboarding and for inventory.
 
 # Acknowledgements
 Many thanks to the following contributors that provided content to this part of the SQL Server samples repository.
 - [Tps99](https://github.com/tps99)
+- [batuhan-yildiz](https://github.com/batuhan-yildiz)
 
 <a name=disclaimers></a>
 ## Disclaimers
