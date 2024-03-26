@@ -776,7 +776,7 @@
                 },
                 {
                   "name": "query",
-                  "value": "resources\n| where  ['type']  == \"microsoft.azurearcdata/sqlserverinstances\"\n//Tag values - edit here for custom tags\n| extend dataCenter = tostring(tags.DataCenter)\n| summarize ServerCount = count() by dataCenter",
+                  "value": "resources\n| where  ['type']  == \"microsoft.azurearcdata/sqlserverinstances\"\n//Tag values - edit here for custom tags\n| extend dataCenter = tostring(tags.Datacenter)\n| summarize ServerCount = count() by dataCenter",
                   "isOptional": true
                 }
               ],
@@ -786,7 +786,7 @@
               },
               "partHeader": {
                 "title": "SQL Server Instasnces by Data Center",
-                "subtitle": "SQL Servers insetasnces by \"Datacenter\" tag values."
+                "subtitle": "SQL Servers instances by \"Datacenter\" tag values."
               }
             }
           },
