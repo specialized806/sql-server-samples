@@ -678,14 +678,14 @@
                 },
                 {
                   "name": "query",
-                  "value": "resources\r\n    | where type == \"microsoft.hybridcompute/machines\"\r\n    | where properties.detectedProperties.mssqldiscovered == true\r\n    | extend serverId = tolower(tostring(id))\r\n    | extend serverName = name\r\n    | extend serverProvisioningState = tostring(properties.provisioningState)\r\n    | extend serverServerStatus = tostring(properties.status)\r\n    | extend serverProcessorCount = properties.detectedProperties.processorCount\r\n    | extend serverCoreCount = toint(properties.detectedProperties.coreCount)\r\n    | extend serverLogicalCoreCount = toint(properties.detectedProperties.logicalCoreCount)\r\n    | join kind= leftouter (\r\n        resources\r\n            | where type == \"microsoft.hybridcompute/machines/extensions\"\r\n            | where properties.type in (\"WindowsAgent.SqlServer\",\"LinuxAgent.SqlServer\")\r\n            | extend extensionId = tolower(tostring(id))\r\n            | extend extensionServerId = tolower(tostring (iff(id contains \"/extensions/WindowsAgent.SqlServer\" or id contains \"/extensions/LinuxAgent.SqlServer\", substring(id, 0, indexof(id, \"/extensions/\")), \"\")))\r\n            | extend extensionProvisioningState = tostring(properties.provisioningState) \r\n            | extend extensionLicenseType = tostring(properties.settings.LicenseType)\r\n    )\r\n    on $left.serverId == $right.extensionServerId\r\n    | join kind= leftouter (\r\n        resources\r\n            | where type == 'microsoft.azurearcdata/sqlserverinstances' \r\n            | extend sqlId = tolower(tostring(id))\r\n            | extend sqlServerId = tolower(tostring(properties.containerResourceId))\r\n            | extend sqlName = name\r\n            | extend sqlProvisioningState = tostring(properties.provisioningState)\r\n            | extend sqlServerStatus = tostring(properties.status)\r\n            | extend sqlVersion = tostring(properties.version)\r\n            | extend sqlLicenseType = tostring(properties.licenseType)\r\n            | extend sqlEdition = tostring(properties.edition)\r\n            | extend sqlvcore = toint(properties.vCore)\r\n    )\r\n    on $left.extensionServerId == $right.sqlServerId\r\n    | where isnotempty(sqlServerId)\r\n    //| project sqlEdition, serverName, sqlName, sqlLicenseType, extensionLicenseType, serverCoreCount, sqlvcore\r\n    | where sqlLicenseType in (\"Paid\", \"ServerCAL\")\r\n    | where sqlEdition in (\"Enterprise\", \"Standard\")\r\n    | summarize count(sqlName), min(serverCoreCount), sum(sqlvcore) by serverName, extensionLicenseType\r\n    | summarize [\"Number of Servers\"] = count(serverName), [\"Number of SQL Servers\"] = sum(count_sqlName),  \r\n        [\"Number of Windows Cores\"] = sum(min_serverCoreCount), [\"Number of SQL Cores\"] = sum(sum_sqlvcore) \r\n        by [\"Extension License Type\"] = extensionLicenseType",
+                  "value": "resources\r\n    | where type == \"microsoft.hybridcompute/machines\"\r\n    | where properties.detectedProperties.mssqldiscovered == true\r\n    | extend serverId = tolower(tostring(id))\r\n    | extend serverName = name\r\n    | extend serverProvisioningState = tostring(properties.provisioningState)\r\n    | extend serverServerStatus = tostring(properties.status)\r\n    | extend serverProcessorCount = properties.detectedProperties.processorCount\r\n    | extend serverCoreCount = toint(properties.detectedProperties.coreCount)\r\n    | extend serverLogicalCoreCount = toint(properties.detectedProperties.logicalCoreCount)\r\n    | join kind= leftouter (\r\n        resources\r\n            | where type == \"microsoft.hybridcompute/machines/extensions\"\r\n            | where properties.type in (\"WindowsAgent.SqlServer\",\"LinuxAgent.SqlServer\")\r\n            | extend extensionId = tolower(tostring(id))\r\n            | extend extensionServerId = tolower(tostring (iff(id contains \"/extensions/WindowsAgent.SqlServer\" or id contains \"/extensions/LinuxAgent.SqlServer\", substring(id, 0, indexof(id, \"/extensions/\")), \"\")))\r\n            | extend extensionProvisioningState = tostring(properties.provisioningState) \r\n            | extend extensionLicenseType = tostring(properties.settings.LicenseType)\r\n    )\r\n    on $left.serverId == $right.extensionServerId\r\n    | join kind= leftouter (\r\n        resources\r\n            | where type == 'microsoft.azurearcdata/sqlserverinstances' \r\n            | extend sqlId = tolower(tostring(id))\r\n            | extend sqlServerId = tolower(tostring(properties.containerResourceId))\r\n            | extend sqlName = name\r\n            | extend sqlProvisioningState = tostring(properties.provisioningState)\r\n            | extend sqlServerStatus = tostring(properties.status)\r\n            | extend sqlVersion = tostring(properties.version)\r\n            | extend sqlLicenseType = tostring(properties.licenseType)\r\n            | extend sqlEdition = tostring(properties.edition)\r\n            | extend sqlvcore = toint(properties.vCore)\r\n    )\r\n    on $left.extensionServerId == $right.sqlServerId\r\n    | where isnotempty(sqlServerId)\r\n    //| project sqlEdition, serverName, sqlName, sqlLicenseType, extensionLicenseType, serverCoreCount, sqlvcore\r\n    | where sqlLicenseType in (\"Paid\", \"ServerCAL\")\r\n    | where sqlEdition in (\"Enterprise\", \"Standard\")\r\n    | summarize count(sqlName), min(serverCoreCount) by serverName, extensionLicenseType\r\n    | summarize [\"Number of Servers\"] = count(serverName), [\"Number of SQL Servers\"] = sum(count_sqlName),  \r\n        [\"Number of Windows Cores\"] = sum(min_serverCoreCount) \r\n        by [\"Extension License Type\"] = extensionLicenseType",
                   "isOptional": true
                 }
               ],
               "type": "Extension/HubsExtension/PartType/ArgQueryGridTile",
               "settings": {},
               "partHeader": {
-                "title": "Number of Cores",
+                "title": "Number of Cores for Production Servers Only (EE/SE)",
                 "subtitle": "SQL License in (Paid and ServerCAL)"
               }
             }
@@ -1009,6 +1009,60 @@
               "partHeader": {
                 "title": "SQL Server 2014 Editions",
                 "subtitle": "SQL Server 2014 ESU"
+              }
+            }
+          },
+          "19": {
+            "position": {
+              "x": 0,
+              "y": 38,
+              "colSpan": 18,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "partTitle",
+                  "value": "Query 2",
+                  "isOptional": true
+                },
+                {
+                  "name": "query",
+                  "value": "resources\r\n    | where type == \"microsoft.hybridcompute/machines\"\r\n    | extend serverId = tolower(tostring(id))\r\n    | extend serverName = name\r\n    | extend serverSubscriptionId = subscriptionId\r\n    | extend serverLocation = location\r\n    | extend serverResourceGroup = resourceGroup\r\n    | extend serverTags = tags\r\n    | extend serverProvisioningState = tostring(properties.provisioningState)\r\n    | extend serverServerStatus = tostring(properties.status)\r\n    | extend serverDisplayName = tostring(properties.displayName)\r\n    | extend serverMssqldiscovered = properties.detectedProperties.mssqldiscovered\r\n    | extend serverComputerName = tostring(properties.osProfile.computerName)\r\n    | project serverId, \r\n        [\"Server Name\"] = serverName, [\"Display Name\"] = serverDisplayName, [\"Computer Name\"] = serverComputerName, \r\n        [\"Server State\"] = serverProvisioningState, [\"Server Status\"] = serverServerStatus, [\"MSSQL Discovered\"] = serverMssqldiscovered,\r\n        [\"Subscription Id\"] = serverSubscriptionId, [\"Location\"] = serverLocation, [\"Resource Group\"] = serverResourceGroup, [\"Server Tags\"] = serverTags\r\n    | join kind= leftouter (\r\n        resources\r\n            | where type == \"microsoft.hybridcompute/machines/extensions\"\r\n            | where properties.type in (\"WindowsAgent.SqlServer\",\"LinuxAgent.SqlServer\")\r\n            | extend extensionId = tolower(tostring(id))\r\n            | extend extensionServerId = tolower(tostring (iff(id contains \"/extensions/WindowsAgent.SqlServer\" or id contains \"/extensions/LinuxAgent.SqlServer\", \r\n                                                        substring(id, 0, indexof(id, \"/extensions/\")), \r\n                                                        \"\")))\r\n            | extend extensionProvisioningState = tostring(properties.provisioningState) \r\n            | extend extensionType = tostring(properties.type)\r\n            | extend extensionVersion = properties.instanceView.typeHandlerVersion\r\n            | parse properties with * 'SQL Server Extension Agent: ' sqlAgentStatus ';' *\r\n            | parse properties with * 'uploadStatus : ' uploadStatus ';' *\r\n            | extend extensionSQLAgentStatus = iff(isnotempty(sqlAgentStatus),sqlAgentStatus,\"Unhealthy\")\r\n            | extend extensionUploadStatus = iff(isnotempty(uploadStatus),uploadStatus,\"Missing SQL Agent\")\r\n            | extend extensionLicenseType = tostring(properties.settings.LicenseType)\r\n            | project extensionId, extensionServerId,\r\n                [\"Extension State\"] = extensionProvisioningState, [\"SQLExtension Status\"] = extensionSQLAgentStatus, [\"DPS Status\"] = extensionUploadStatus, \r\n                [\"Extension Name\"] = extensionType, [\"Extension Version\"] = extensionVersion,\r\n                [\"Extension License\"] = extensionLicenseType\r\n    )\r\n    on $left.serverId == $right.extensionServerId\r\n    | summarize uploadStatusBreakdown = count() by [\"DPS Status\"]",
+                  "isOptional": true
+                },
+                {
+                  "name": "chartType",
+                  "value": 1,
+                  "isOptional": true
+                },
+                {
+                  "name": "isShared",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryId",
+                  "value": "",
+                  "isOptional": true
+                },
+                {
+                  "name": "formatResults",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryScope",
+                  "value": {
+                    "scope": 0,
+                    "values": []
+                  },
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/ArgQueryChartTile",
+              "settings": {},
+              "partHeader": {
+                "title": "Data Processing Service (DPS) Status",
+                "subtitle": ""
               }
             }
           }
