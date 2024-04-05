@@ -685,7 +685,7 @@
               "type": "Extension/HubsExtension/PartType/ArgQueryGridTile",
               "settings": {},
               "partHeader": {
-                "title": "Number of Cores for Production Servers (EE/SE)",
+                "title": "Number of Cores for Production Servers Only (EE/SE)",
                 "subtitle": "SQL License in (Paid and ServerCAL)"
               }
             }
