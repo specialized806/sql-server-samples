@@ -75,7 +75,7 @@ Private policies As Policy() = Nothing
 Private srcSiteUrl As String = Nothing
 Private snkSiteUrl As String = Nothing
 
-Private logFilePath As String = "MigrationLog.txt"
+Private logFilePath As String = "MigrationLog.csv"
 
 ''''''''''''''''''''''''''''''''''''''''''''''
 Sub Main()
@@ -241,8 +241,8 @@ Sub Main()
                     RsSnk.CreateFolder(folderName, parentFolder, Nothing)
                 Catch er As Exception
                     If (er.Message.Contains("Microsoft.ReportingServices.Diagnostics.Utilities.ItemAlreadyExistsException"))
-                        Console.ForegroundColor = ConsoleColor.Yellow
-                        Console.WriteLine("Folder already exists.")
+                        Console.ForegroundColor = ConsoleColor.Gray
+                        Console.WriteLine("Folder already exists: " + folderName)
                         Console.ResetColor()
                     Else
                         Throw ' Unknown Exception
@@ -478,7 +478,7 @@ Function MigrateDataSource(srcItem As CatalogItem) As CatalogItem
 			Console.WriteLine(warningMsg)
 			Console.ResetColor()
 
-            LogErrorToFile("CATALOGITEM", "Warning", warningMsg)
+            LogErrorToFile("CATALOGITEM", "Warning: " + result.Path, warningMsg)
 
 		End If
 
@@ -567,7 +567,7 @@ Function MigrateCatalogItem(srcItem As CatalogItem) As CatalogItem
 						Console.WriteLine(warningMsg)
 						Console.ResetColor()
 
-                        LogErrorToFile("CATALOGITEM", "Warning", warningMsg)
+                        LogErrorToFile("CATALOGITEM", "Warning: " + result.TypeName, warningMsg)
 					End If
 				End If		
 			Next
@@ -742,7 +742,7 @@ Sub MigrateReportSubscriptions(snkReport As CatalogItem, srcReport As CatalogIte
 				Console.Write(description)
 				If Not dataRetrievalPlan Is Nothing And TypeOf dataRetrievalPlan.Item Is DataSourceReference Then
 					Dim item As DataSourceReference = dataRetrievalPlan.Item
-					Dim ref As String = GetSnkPath(item.Reference)
+					Dim ref As String = GetSnkPathRef(item.Reference)
 					item.Reference = ref
 				End If				
 				RsSnk.CreateDataDrivenSubscription(snkReport.Path, extensionSettings, dataRetrievalPlan, description, eventType, GetMatchData(matchData, RsSnk), parameters)
@@ -756,7 +756,7 @@ Sub MigrateReportSubscriptions(snkReport As CatalogItem, srcReport As CatalogIte
 			            Console.WriteLine(warningMsg)
 			            Console.ResetColor()
 
-                        LogErrorToFile("SUBSCRIPTIONS", "Warning", warningMsg)
+                        LogErrorToFile("SUBSCRIPTIONS", "Warning: " + snkReport.Path, warningMsg)
 
 					End If
 				End If		
@@ -795,9 +795,9 @@ Sub MigrateReportSubscriptions(snkReport As CatalogItem, srcReport As CatalogIte
 			    Console.WriteLine(warningMsg)
 			    Console.ResetColor()
 
-                LogErrorToFile("SUBSCRIPTIONS", "Warning", warningMsg)
+                LogErrorToFile("SUBSCRIPTIONS", "Warning: " + snkReport.Path, warningMsg)
 
-			End If			
+			End If
 		Next
 
 	Catch ex As Exception
@@ -990,10 +990,19 @@ End Sub
 
 'Helper function to link snk reference with relative paths
 Function GetSnkPathRef(srcPath As String) As String
-	Dim snkPath = srcPath
-	If srcSiteUrl isNot Nothing
-		snkPath = srcPath.Remove(0, srcSiteUrl.LastIndexOf("/"))
-	End If
+    Dim snkPath = srcPath
+
+	If Not SrcIsNative Then
+        'SharePoint integrated mode, will assume /sites server relative URL delimeter
+    	If srcSiteUrl isNot Nothing
+            Dim delimeter = "/sites/"
+		    snkPath = srcPath.Remove(0, srcSiteUrl.IndexOf(delimeter) + delimeter.Length-1)
+	    End If
+    Else
+        'Treat path reference like other scenarios if not intergated mode
+        snkPath = GetSnkPath(srcPath)
+    End If
+
 	Return snkPath
 End Function
 		
@@ -1189,12 +1198,18 @@ Sub LogErrorToFile(source As String, errItem as String, message As String)
     Dim writer as StreamWriter
 
     Try 
+        Dim fileExists As Boolean = Not File.Exists(logFilePath) OrElse New FileInfo(logFilePath).Length = 0
+
         ' Create a StreamWriter object
         writer = New StreamWriter(logFilePath, True)
 
+        If fileExists Then
+            writer.WriteLine("DateTime, Source, ErrorItem, ErrorMessage")
+        End If
+
         ' Format log message with timestamp
         Dim timeStamp As String = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
-        Dim formattedMessage as String = String.Format("{0}, {1}, {2}, ""{3}""", timeStamp, source, errItem, message.Replace(Environment.NewLine, ""))
+        Dim formattedMessage as String = String.Format("{0}, {1}, {2}, ""{3}""", timeStamp, source, errItem, message.Replace(Environment.NewLine, " "))
 
         ' Write the log entry to file
         writer.WriteLine(formattedMessage)
