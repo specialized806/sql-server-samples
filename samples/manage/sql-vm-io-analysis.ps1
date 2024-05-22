@@ -1,7 +1,7 @@
-# Prompt user for details
-$subscriptionId = Read-Host "Enter Subscription ID"
-$resourceGroup = Read-Host "Enter Resource Group Name"
-$vmName = Read-Host "Enter VM Name"
+# Enter parameters
+$subscriptionId = Read-Host "<Subscription ID>"
+$resourceGroup = Read-Host "<Resource Group>"
+$vmName = Read-Host "<Virtual machine name>"
 
 # Set resource details
 $resourceType = "Microsoft.Compute/virtualMachines"
@@ -10,7 +10,7 @@ $resourceId = "/subscriptions/$subscriptionId/resourceGroups/$resourceGroup/prov
 # Get Azure access token
 $accessToken = az account get-access-token --query accessToken -o tsv
 
-# Function to invoke Azure Monitor Metrics API
+# Invoke Azure Monitor Metrics API
 function Get-Metrics {
 	[CmdletBinding()]
     param (
@@ -39,7 +39,7 @@ function Get-Metrics {
     }
 }
 
-# Function to check if Data Disk Latency data is violating thresholds
+# Check if data disk latency violates thresholds
 function Check-Latency {
     [CmdletBinding()]
     param (
@@ -78,7 +78,7 @@ function Check-Latency {
     }
 }
 
-# Function to check metrics other than Latency and evaluate if they are throttled
+# Check metrics other than latency to evaluate for throttling
 function Check-OtherMetricsThrottled {
 	[CmdletBinding()]
     param (
@@ -114,7 +114,7 @@ function Check-OtherMetricsThrottled {
     return $violatedMetrics
 }
 
-# Function to compare the times for Latency Metric & other Throttled Metrics. Logs Violations with Values & Timestamps
+# Compare times for latency & other throttled metrics. Logs the volations with values & timestamps
 function CompareTimes {
 	[CmdletBinding()]
     param (
@@ -163,13 +163,13 @@ if (-not [int]::TryParse($latencyThreshold, [ref]0)) {
 	Write-Host "No valid input provided. Using Default 500ms for disk latency threshold"
 }
 
-# Main Logic Execution:
+# Execute main logic
 $latencyMetrics = Get-Metrics -accessToken $accessToken -resourceId $resourceId -metricNames "Data Disk Latency"
 $latencyResult = Check-Latency -metrics $latencyMetrics -latencyThreshold $latencyThreshold
 
 if ($latencyResult.Flag) {
 	
-	# Only if Latency is flagged we will check for other metrics. If no disk latency is experienced, machine is likely not throttled but only at high consumption
+	# If latency is flagged, check for other metrics. If there is no disk latency, machine is likely not throttled but only at high consumption
 	Write-Verbose "Checking the following metrics: Data Disk Bandwidth Consumed Percentage,Data Disk IOPS Consumed Percentage,VM Cached Bandwidth Consumed Percentage,VM Cached IOPS Consumed Percentage,VM Uncached Bandwidth Consumed Percentage,VM Uncached IOPS Consumed Percentage"
 	
     $DiskVMMetrics = Get-Metrics -accessToken $accessToken -resourceId $resourceId -metricNames "Data Disk Bandwidth Consumed Percentage,Data Disk IOPS Consumed Percentage,VM Cached Bandwidth Consumed Percentage,VM Cached IOPS Consumed Percentage,VM Uncached Bandwidth Consumed Percentage,VM Uncached IOPS Consumed Percentage"
