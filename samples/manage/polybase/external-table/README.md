@@ -70,7 +70,7 @@ Referring to the documentation page, it explicitly states, "Updating statistics 
   * This option is not feasible for maintenance plans managed by SQL Server Management Studio, necessitating third-party solutions.
 
 * Option 2: Drop and Recreate Statistics:
-  * Employ a stored procedure, `sp_drop_create_stats_external_table`, to generate T-SQL statements for dropping and creating statistics on external tables. This procedure supports statistics on multiple columns.
+  * Employ a stored procedure, [sp_drop_create_stats_external_table](https://github.com/microsoft/sql-server-samples/tree/master/samples/manage/polybase/external-table/source/sp-drop-create-stats-external-table.sql), to generate T-SQL statements for dropping and creating statistics on external tables. This procedure supports statistics on multiple columns.
 
 ### Implementation guide
 
