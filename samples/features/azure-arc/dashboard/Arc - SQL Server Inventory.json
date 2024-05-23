@@ -731,7 +731,7 @@
               },
               "partHeader": {
                 "title": "SQL Server Instances by Location",
-                "subtitle": "SQL Servers instasnces by \"Location\" tag values"
+                "subtitle": "SQL Servers instances by \"Location\" tag values"
               }
             }
           },
@@ -785,7 +785,7 @@
                 "content": {}
               },
               "partHeader": {
-                "title": "SQL Server Instasnces by Data Center",
+                "title": "SQL Server Instances by Data Center",
                 "subtitle": "SQL Servers instances by \"Datacenter\" tag values."
               }
             }

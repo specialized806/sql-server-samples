@@ -30,7 +30,7 @@ The script accepts the following command line parameters:
 |-SubId|subscription_id *or* a file_name|Optional: Subscription id or a .csv file with the list of subscriptions<sup>1</sup>. If not specified all subscriptions will be scanned|
 |-ResourceGroup |resource_group_name|Optional: Limits the scope  to a specific resource group|
 |-MachineName |machine_name|Optional: Limits the scope to a specific machine|
-|-LicenceType | "Paid", "PAYG" or "LicenseOnly"| Optional: Sets the license type to the specified value |
+|-LicenseType | "Paid", "PAYG" or "LicenseOnly"| Optional: Sets the license type to the specified value |
 |-EnableESU | "Yes", "No" | Optional. Enables the ESU policy the value is "Yes" or disables it if the value is "No". To enable, the license type must be "Paid" or "PAYG"|
 |-Force| |Optional. Forces the change of the license type to the specified value on all installed extensions. If -Force is not specified, the -LicenseType value is set only if undefined. Ignored if -LicenseType  is not specified|
 
