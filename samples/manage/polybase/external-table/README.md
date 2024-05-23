@@ -1,9 +1,9 @@
 <!-- Always leave the MS logo -->
 ![](https://github.com/microsoft/sql-server-samples/blob/master/media/solutions-microsoft-logo-small.png)
 
-# Handling Update Statistics Error on External Tables in SQL Server
+# Handling UPDATE STATISTICS error on SQL Server PolyBase external tables
 
-This sample describes an option to update statistics on SQL Server PolyBase external tables!
+This sample describes an option to update statistics on SQL Server PolyBase external tables.
 
 ## Background
 
@@ -37,7 +37,7 @@ The object Update Statistics isn't supported on External Table
 ## About this sample
 
 - **Applies to:** SQL Server 2017 (or higher)
-- **Key features:** Update statistics
+- **Key features:** UPDATE STATISTICS
 - **Workload:** No workload related to this sample
 - **Programming Language:** T-SQL
 - **Authors:** [Sergio Govoni](https://www.linkedin.com/in/sgovoni/) | [Microsoft MVP Profile](https://mvp.microsoft.com/mvp/profile/c7b770c0-3c9a-e411-93f2-9cb65495d3c4) | [Blog](https://segovoni.medium.com/) | [GitHub](https://github.com/segovoni) | [Twitter](https://twitter.com/segovoni)
@@ -60,19 +60,19 @@ Upon investigation, it became apparent that SQL Server does not support the dire
 
 ## Resolution steps
 
-1. Understanding the Limitation:
+### Understanding the Limitation
 
 Referring to the documentation page, it explicitly states, "Updating statistics is not supported on external tables. To update statistics on an external table, drop and re-create the statistics."
 
-2. Available Solutions:
+### Available Solutions
 
-Option 1: Ignore External Tables:
-This option is not feasible for maintenance plans managed by SQL Server Management Studio, necessitating third-party solutions.
+* Option 1: Ignore External Tables:
+  * This option is not feasible for maintenance plans managed by SQL Server Management Studio, necessitating third-party solutions.
 
-Option 2: Drop and Recreate Statistics:
-Employ a stored procedure, `sp_drop_create_stats_external_table`, to generate T-SQL statements for dropping and creating statistics on external tables. This procedure supports statistics on multiple columns.
+* Option 2: Drop and Recreate Statistics:
+  * Employ a stored procedure, `sp_drop_create_stats_external_table`, to generate T-SQL statements for dropping and creating statistics on external tables. This procedure supports statistics on multiple columns.
 
-3. Implementation Guide:
+### Implementation Guide
 
 - Execute `sp_drop_create_stats_external_table` to generate T-SQL statements
 - Execute DROP STATISTICS statements before the maintenance statistics task
