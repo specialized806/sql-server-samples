@@ -1,7 +1,7 @@
 <!-- Always leave the MS logo -->
 ![](https://github.com/microsoft/sql-server-samples/blob/master/media/solutions-microsoft-logo-small.png)
 
-# Handling UPDATE STATISTICS error on SQL Server PolyBase external tables
+# Handling UPDATE STATISTICS on SQL Server PolyBase external tables
 
 This sample describes an option to update statistics on SQL Server PolyBase external tables.
 
