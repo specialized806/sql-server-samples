@@ -239,7 +239,7 @@ $gatewaySubnetName = "GatewaySubnet"
 
 If ($false -eq $subnets.Contains($gatewaySubnetName)) {
     Write-Host "$gatewaySubnetName is not one of the subnets in $subnets" -ForegroundColor Yellow
-    $gatewaySubnetPrefix = CalculateNextAddressPrefix $virtualNetwork 28
+    $gatewaySubnetPrefix = CalculateNextAddressPrefix $virtualNetwork 27
     Write-Host "Creating subnet $gatewaySubnetName ($gatewaySubnetPrefix) in the virtual network ..." -ForegroundColor Green
 
     $virtualNetwork.AddressSpace.AddressPrefixes.Add($gatewaySubnetPrefix)
