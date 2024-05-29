@@ -162,7 +162,10 @@ function CalculateNextAddressPrefix {
             $startIPAddress = $endIPAddress
         }
     }
-    $startIPAddress += 1
+    # round up to the next possible start for the given suffix size
+    $suffixLength = 32 - $prefixLength
+    $startIPAddress = (($startIPAddress -shr $suffixLength) + 1) -shl $suffixLength
+    # convert and return
     $addressPrefixResult = (ConvertUInt32ToIPAddress $startIPAddress) + "/" + $prefixLength
     Write-Host "Using address prefix $addressPrefixResult." -ForegroundColor Green
     return $addressPrefixResult
