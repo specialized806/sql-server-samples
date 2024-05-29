@@ -163,6 +163,12 @@ function CalculateNextAddressPrefix {
         }
     }
     $startIPAddress += 1
+    # if crossing a block boundary, round to the next possible start for the given suffix size
+    if (($startIPAddress -shr $prefixLength) -ne 0) {
+        $suffixLength = 32 - $prefixLength
+        $startIPAddress = (($startIPAddress -shr $suffixLength) + 1) -shl $suffixLength
+    }
+    # convert and return
     $addressPrefixResult = (ConvertUInt32ToIPAddress $startIPAddress) + "/" + $prefixLength
     Write-Host "Using address prefix $addressPrefixResult." -ForegroundColor Green
     return $addressPrefixResult
