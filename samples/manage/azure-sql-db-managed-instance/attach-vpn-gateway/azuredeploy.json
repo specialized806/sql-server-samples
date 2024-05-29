@@ -47,7 +47,8 @@
             "name": "[variables('gatewayPublicIpAddressName')]",
             "location": "[parameters('location')]",
             "properties": {
-                "publicIPAllocationMethod": "Dynamic"
+                "publicIPAllocationMethod": "Dynamic",
+                "Sku": "Standard"
             }
         },
         {
