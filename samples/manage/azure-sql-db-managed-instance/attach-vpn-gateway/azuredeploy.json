@@ -46,9 +46,9 @@
             "type": "Microsoft.Network/publicIPAddresses",
             "name": "[variables('gatewayPublicIpAddressName')]",
             "location": "[parameters('location')]",
+            "Sku": "Standard",
             "properties": {
-                "publicIPAllocationMethod": "Dynamic",
-                "Sku": "Standard"
+                "publicIPAllocationMethod": "Dynamic"
             }
         },
         {
