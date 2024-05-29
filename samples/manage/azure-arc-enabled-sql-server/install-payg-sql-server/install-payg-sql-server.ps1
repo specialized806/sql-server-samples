@@ -17,6 +17,8 @@ param (
     [string]$SqlServerEdition,
     [Parameter (Mandatory=$true)]
     [string]$SqlServerProductKey,
+    [Parameter (Mandatory=$true)]
+    [string]$isoURL,
     [Parameter (Mandatory=$false)]
     [string]$SqlServerCU = "latest",
     [Parameter (Mandatory=$false)]
@@ -78,14 +80,6 @@ function LoadModule
 }
 
 try {
-    # ISO URL for each version
-    $isoURL @{
-        2012 = "";
-        2014 = "";
-        2016 = "";
-        2019 = "";
-        2022 = "https://download.microsoft.com/download/7/c/1/7c14e92e-bdcb-4f89-b7cf-93543e7112d1/SQLServer2019-x64-ENU-Dev.iso"
-    }
 
     #Step 0: Ensure PS version and load missing Azure modules 
     #
@@ -140,9 +134,9 @@ try {
  
     if (!(Test-Path -Path $isoLocation)) { 
         $freeSpace = (Get-PSDrive -Name C).Free
-        $isoSize = (Invoke-WebRequest -Uri $isoURL[$SqlServerVersion] -Method Head).Headers.'Content-Length'
+        $isoSize = (Invoke-WebRequest -Uri $isoURL -Method Head).Headers.'Content-Length'
         if ($freeSpace -gt $isoSize) {
-             Start-BitsTransfer -Source $isoURL[$SqlServerVersion] -Destination $isoLocation
+             Start-BitsTransfer -Source $isoURL -Destination $isoLocation
         } else {
              throw "Not enough free space to download the ISO."
         }
