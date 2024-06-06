@@ -8,9 +8,7 @@ param (
     [Parameter (Mandatory=$false)]
     [string]$SqlServerInstanceName,
     [Parameter (Mandatory=$true)]
-    [string]$SqlServerAdminAccount,
-    [Parameter (Mandatory=$true)]
-    [string]$SqlServerAdminPassword,
+    [string]$SqlServerAdminAccounts,
     [Parameter (Mandatory=$true)]
     [string]$SqlServerSvcAccount,
     [Parameter (Mandatory=$true)]
@@ -154,8 +152,7 @@ try {
         /INSTANCENAME='$($SqlServerInstanceName)' 
         /FEATURES=SQL 
         /INSTANCEDIR=C:\SQL 
-        /SQLSYSADMINACCOUNTS='$($SqlServerAdminAccount)' 
-        /SAPWD='$($SqlServerAdminPassword)'
+        /SQLSYSADMINACCOUNTS='$($SqlServerAdminAccounts)' 
         /SQLSVCACCOUNT='$($SqlServerSvcAccount)' 
         /SQLSVCPASSWORD='$($SqlServerSvcPassword)' 
         /AGTSVCACCOUNT='$($SqlServerSvcAccount)' 
