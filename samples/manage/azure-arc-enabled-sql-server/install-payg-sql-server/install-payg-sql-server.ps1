@@ -103,7 +103,7 @@ try {
     }
 
     # Step 2: Log in to Azure
-    az login
+    Connect-AzAccount
     $subscription = Get-AzSubscription -SubscriptionId $AzureSubscriptionId -ErrorAction SilentlyContinue
     if (-not $subscription) {
         Write-Error "Azure subscription with ID '$AzureSubscriptionId' does not exist."
@@ -119,18 +119,15 @@ try {
         Write-Error "Resource group '$AzureResourceGroupUri' does not exist."
         exit
     }    
-    az group update --name $AzureResourceGroupUri --tags "ArcOnboarding=Blocked"
+    $tags = @{"ArcOnboarding" = "Blocked"}
+    Set-AzResourceGroup -Name $AzureResourceGroupUri -Tag $tags
 
     # Step 3: Onboard the VM to Azure Arc
     $hostName = (Get-WmiObject Win32_ComputerSystem).Name
 
-    az arc connectedmachine create --resource-group $AzureResourceGroupUri --name $hostName --location $location
+    New-AzConnectedMachine -ResourceGroupName $AzureResourceGroupUri -Name $hostName -Location $location
 
-    # Step 4: Install SQL Arc extension with LT=PAYG
-    az connectedmachine extension create --machine-name $hostName --resource-group $AzureResourceGroupUri --name "WindowsAgent.SqlServer" --type "WindowsAgent.SqlServer" --publisher "Microsoft.AzureData" --settings '{"LicenseType":"PAYG", "SqlManagement": {"IsEnabled":true}}'
- 
-
-    # Step 5: Automatically download installable media
+    # Step 4: Automatically download installable media
  
     if (!(Test-Path -Path $isoLocation)) { 
         $freeSpace = (Get-PSDrive -Name C).Free
@@ -142,24 +139,50 @@ try {
         }
     }
 
-    # Step 6: Mount the ISO file as a volume
+    # Step 5: Mount the ISO file as a volume
     $volumeInfo = Mount-DiskImage -ImagePath $isoLocation -PassThru | Get-Volume
     
-    # Step 7: Run unattended SQL Server setup from the mounted volume
+    # Step 6: Run unattended SQL Server setup from the mounted volume
     $setupPath = ($volumeInfo.DriveLetter + ":\setup.exe")
     Start-Process -FilePath $setupPath -ArgumentList "/q /ACTION=Install /INSTANCENAME=$SqlServerInstanceName /FEATURES=SQL /INSTANCEDIR=C:\SQL /SQLSYSADMINACCOUNTS=$SqlServerAdminAccount /SQLSVCACCOUNT=$SqlServerAdminAccount /SQLSVCPASSWORD=$SqlServerAdminPassword /AGTSVCACCOUNT=$SqlServerAdminAccount /AGTSVCPASSWORD=$SqlServerAdminPassword /IACCEPTSQLSERVERLICENSETERMS /PID=$SqlServerProductKey /SQLSERVERUPDATE=$SqlServerCU"
 
-    # Step 8: Dismount the ISO file after installation
+    # Step 7: Install SQL Arc extension with LT=PAYG
+    $Settings = @{
+        SqlManagement = @{ IsEnabled = $true };        
+        LicenseType = "PAYG";
+        enableExtendedSecurityUpdates = $True;
+        esuLastUpdatedTimestamp = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
+    }
+    New-AzConnectedMachineExtension -ResourceGroupName $AzureResourceGroupUri -MachineName $hostName -Name "WindowsAgent.SqlServer" -Publisher "Microsoft.AzureData" -Type "WindowsAgent.SqlServer" -TypeHandlerVersion "1.0" -Settings $settings
+
+    # Step 9: Dismount the ISO file after installation
     Dismount-DiskImage -ImagePath $isoLocation
 
-    # Step 9: Remove the media from the local file system
+    # Step 10: Remove the media from the local file system
     Remove-Item -Path $isoLocation
 
-    # Step 10: Display the status of the Azure resource
-    az resource show --ids $AzureResourceGroupUri
+    # Step 8: Display the status of the Azure resource for Arc-enabled SQL Server    
+    $query = "
+    resources
+    | where type =~ "microsoft.hybridcompute/machines" 
+    | where resourceGroup =~ '$($AzureResourceGroupUri)'
+    | where properties.detectedProperties.mssqldiscovered == "true"
+    | extend machineIdHasSQLServerDiscovered = id
+    | project name, machineIdHasSQLServerDiscovered, resourceGroup, subscriptionId
+    | join kind= leftouter (
+        resources
+        | where type == "microsoft.hybridcompute/machines/extensions"    | where properties.type in ("WindowsAgent.SqlServer","LinuxAgent.SqlServer")
+        | extend machineIdHasSQLServerExtensionInstalled = iff(id contains "/extensions/WindowsAgent.SqlServer" or id contains "/extensions/LinuxAgent.SqlServer", substring(id, 0, indexof(id, "/extensions/")), "")
+        | project Extension_State = properties.provisioningState,
+        License_Type = properties.settings.LicenseType,
+        ESU = iff(notnull(properties.settings.enableExtendedSecurityUpdates), iff(properties.settings.enableExtendedSecurityUpdates == true,"enabled","disabled"), ""),
+        Extension_Version = properties.instanceView.typeHandlerVersion,
+        machineIdHasSQLServerExtensionInstalled)on $left.machineIdHasSQLServerDiscovered == $right.machineIdHasSQLServerExtensionInstalled
+        | where isnotempty(machineIdHasSQLServerExtensionInstalled)
+    | project-away machineIdHasSQLServerDiscovered, machineIdHasSQLServerExtensionInstalled
+    "
+    Search-AzGraph -Query "$($query)"
 
-    # Step 11: Verify the presence of the Arc-enabled SQL Server
-    az sql arc list --resource-group $AzureResourceGroupUri
 } catch {
     Write-Error "An error occurred: $_"
     # You can add additional error handling logic here
