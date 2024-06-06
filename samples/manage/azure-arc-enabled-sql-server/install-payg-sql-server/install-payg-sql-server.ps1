@@ -144,7 +144,23 @@ try {
     
     # Step 6: Run unattended SQL Server setup from the mounted volume
     $setupPath = ($volumeInfo.DriveLetter + ":\setup.exe")
-    Start-Process -FilePath $setupPath -ArgumentList "/q /ACTION=Install /INSTANCENAME=$SqlServerInstanceName /FEATURES=SQL /INSTANCEDIR=C:\SQL /SQLSYSADMINACCOUNTS=$SqlServerAdminAccount /SQLSVCACCOUNT=$SqlServerAdminAccount /SQLSVCPASSWORD=$SqlServerAdminPassword /AGTSVCACCOUNT=$SqlServerAdminAccount /AGTSVCPASSWORD=$SqlServerAdminPassword /IACCEPTSQLSERVERLICENSETERMS /PID=$SqlServerProductKey /SQLSERVERUPDATE=$SqlServerCU"
+    $argumentList = "
+        /q 
+        /ACTION=Install 
+        /INSTANCENAME='$($SqlServerInstanceName)' 
+        /FEATURES=SQL 
+        /INSTANCEDIR=C:\SQL 
+        /SQLSYSADMINACCOUNTS='$($SqlServerAdminAccount)' 
+        /SQLSVCACCOUNT='$($SqlServerAdminAccount)' 
+        /SQLSVCPASSWORD='$($SqlServerAdminPassword)' 
+        /AGTSVCACCOUNT='$($SqlServerAdminAccount)' 
+        /AGTSVCPASSWORD='$($SqlServerAdminPassword)' 
+        /IACCEPTSQLSERVERLICENSETERMS 
+        /PID='$($SqlServerProductKey)' 
+        /SQLSERVERUPDATE='$($SqlServerCU)' 
+        /Edition='$($SqlServerEdition)'
+    "
+    Start-Process -FilePath $setupPath -ArgumentList $argumentList
 
     # Step 7: Install SQL Arc extension with LT=PAYG
     $Settings = @{
@@ -164,18 +180,18 @@ try {
     # Step 8: Display the status of the Azure resource for Arc-enabled SQL Server    
     $query = "
     resources
-    | where type =~ "microsoft.hybridcompute/machines" 
+    | where type =~ 'microsoft.hybridcompute/machines' 
     | where resourceGroup =~ '$($AzureResourceGroupUri)'
-    | where properties.detectedProperties.mssqldiscovered == "true"
+    | where properties.detectedProperties.mssqldiscovered == 'true'
     | extend machineIdHasSQLServerDiscovered = id
     | project name, machineIdHasSQLServerDiscovered, resourceGroup, subscriptionId
     | join kind= leftouter (
         resources
-        | where type == "microsoft.hybridcompute/machines/extensions"    | where properties.type in ("WindowsAgent.SqlServer","LinuxAgent.SqlServer")
-        | extend machineIdHasSQLServerExtensionInstalled = iff(id contains "/extensions/WindowsAgent.SqlServer" or id contains "/extensions/LinuxAgent.SqlServer", substring(id, 0, indexof(id, "/extensions/")), "")
+        | where type == 'microsoft.hybridcompute/machines/extensions'    | where properties.type in ('WindowsAgent.SqlServer','LinuxAgent.SqlServer')
+        | extend machineIdHasSQLServerExtensionInstalled = iff(id contains '/extensions/WindowsAgent.SqlServer' or id contains '/extensions/LinuxAgent.SqlServer', substring(id, 0, indexof(id, '/extensions/')), '')
         | project Extension_State = properties.provisioningState,
         License_Type = properties.settings.LicenseType,
-        ESU = iff(notnull(properties.settings.enableExtendedSecurityUpdates), iff(properties.settings.enableExtendedSecurityUpdates == true,"enabled","disabled"), ""),
+        ESU = iff(notnull(properties.settings.enableExtendedSecurityUpdates), iff(properties.settings.enableExtendedSecurityUpdates == true,'enabled','disabled'), ''),
         Extension_Version = properties.instanceView.typeHandlerVersion,
         machineIdHasSQLServerExtensionInstalled)on $left.machineIdHasSQLServerDiscovered == $right.machineIdHasSQLServerExtensionInstalled
         | where isnotempty(machineIdHasSQLServerExtensionInstalled)
