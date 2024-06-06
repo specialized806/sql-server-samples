@@ -4,7 +4,7 @@ param (
     [Parameter (Mandatory=$true)]
     [string]$AzureResourceGroupUri,
     [Parameter (Mandatory=$true)]
-    [string]$location,
+    [string]$AzureRegion,
     [Parameter (Mandatory=$false)]
     [string]$SqlServerInstanceName,
     [Parameter (Mandatory=$true)]
@@ -20,9 +20,8 @@ param (
     [Parameter (Mandatory=$true)]
     [string]$isoURL,
     [Parameter (Mandatory=$false)]
-    [string]$SqlServerCU = "latest",
-    [Parameter (Mandatory=$false)]
-    [string]$isoLocation = "C:\download\SQLServer.iso"
+    [string]$SqlServerCU = "latest"
+    
 )
 
 # This function checks if the specified module is imported into the session and if not installes and/or imports it
@@ -125,10 +124,11 @@ try {
     # Step 3: Onboard the VM to Azure Arc
     $hostName = (Get-WmiObject Win32_ComputerSystem).Name
 
-    New-AzConnectedMachine -ResourceGroupName $AzureResourceGroupUri -Name $hostName -Location $location
+    New-AzConnectedMachine -ResourceGroupName $AzureResourceGroupUri -Name $hostName -Location $AzureRegion
 
     # Step 4: Automatically download installable media
  
+    $isoLocation = "C:\download\SQLServer.iso"
     if (!(Test-Path -Path $isoLocation)) { 
         $freeSpace = (Get-PSDrive -Name C).Free
         $isoSize = (Invoke-WebRequest -Uri $isoURL -Method Head).Headers.'Content-Length'
