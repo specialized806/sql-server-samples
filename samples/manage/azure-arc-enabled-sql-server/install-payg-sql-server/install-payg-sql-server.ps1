@@ -12,6 +12,10 @@ param (
     [Parameter (Mandatory=$true)]
     [string]$SqlServerAdminPassword,
     [Parameter (Mandatory=$true)]
+    [string]$SqlServerSvcAccount,
+    [Parameter (Mandatory=$true)]
+    [string]$SqlServerSvcPassword,
+    [Parameter (Mandatory=$true)]
     [string]$SqlServerVersion,
     [Parameter (Mandatory=$true)]
     [string]$SqlServerEdition,
@@ -151,10 +155,11 @@ try {
         /FEATURES=SQL 
         /INSTANCEDIR=C:\SQL 
         /SQLSYSADMINACCOUNTS='$($SqlServerAdminAccount)' 
-        /SQLSVCACCOUNT='$($SqlServerAdminAccount)' 
-        /SQLSVCPASSWORD='$($SqlServerAdminPassword)' 
-        /AGTSVCACCOUNT='$($SqlServerAdminAccount)' 
-        /AGTSVCPASSWORD='$($SqlServerAdminPassword)' 
+        /SAPWD='$($SqlServerAdminPassword)'
+        /SQLSVCACCOUNT='$($SqlServerSvcAccount)' 
+        /SQLSVCPASSWORD='$($SqlServerSvcPassword)' 
+        /AGTSVCACCOUNT='$($SqlServerSvcAccount)' 
+        /AGTSVCPASSWORD='$($SqlServerSvcPassword)' 
         /IACCEPTSQLSERVERLICENSETERMS 
         /PID='$($SqlServerProductKey)' 
         /SQLSERVERUPDATE='$($SqlServerCU)' 
