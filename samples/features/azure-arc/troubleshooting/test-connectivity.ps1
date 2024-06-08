@@ -40,15 +40,13 @@ do{
         $dps_url =  "dataprocessingservice.$_.arcdataservices.com"
         $ti_url =  "telemetry.$_.arcdataservices.com"
         try{
-            $dps_result = (Invoke-WebRequest -Uri $dps_url -Method Get).StatusCode
+            $dps_response_time = Measure-Command { $response = Invoke-WebRequest -Uri $dps_url -Method Get }
+            $dps_result = ($response).StatusCode
         }catch{
             $dps_result = $_.Exception.Message
         }
         try{
-            $ti_result = (Invoke-WebRequest -Uri $ti_url -Method Get).StatusCode
-            if($ti_result -contains "401"){  #As of now, the telemetry endpoint returns unauthorized status code if accessing in an unauthenticated way. Since this is a connectivity test script, a 401 response is good enough to establish availability and connectivity.
-                $ti_result = "Expected"
-            }
+            $ti_response_time = Measure-Command { $response = Invoke-WebRequest -Uri $ti_url -Method Get -SkipHttpErrorCheck }
         }catch{
             if($_.Exception.Message -like "*401*"){
                 $ti_result = "Expected"
@@ -56,9 +54,17 @@ do{
             else {
                 $ti_result = $_.Exception.Message
             }
-            
         }
-        Write-Host $dps_result $ti_result " :: $_"
+        if ($ti_response_time.TotalSeconds -gt 3 -or $dps_response_time.TotalSeconds -gt 3 -or $dps_result -ne 200 -or $ti_result -ne "Expected") {
+            Write-Host $dps_result "($dps_response_time) " $ti_result " ($ti_response_time) :: $_" -ForegroundColor Red
+        }
+        elseif ($ti_response_time.TotalSeconds -gt 1 -or $dps_response_time.TotalSeconds -gt 1) {
+            Write-Host $dps_result "($dps_response_time) " $ti_result " ($ti_response_time) :: $_" -ForegroundColor Yellow
+        }
+        else
+        {
+            Write-Host $dps_result "($dps_response_time) " $ti_result " ($ti_response_time) :: $_"
+        }
     }
-    Write-Host "============================================"
+    Write-Host "====================================================================="
 } while($true)
