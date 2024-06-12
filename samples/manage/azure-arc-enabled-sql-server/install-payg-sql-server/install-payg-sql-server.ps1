@@ -20,10 +20,7 @@ param (
     [Parameter (Mandatory=$true)]
     [string]$SqlServerProductKey,
     [Parameter (Mandatory=$true)]
-    [string]$isoURL,
-    [Parameter (Mandatory=$false)]
-    [string]$SqlServerCU = "latest"
-    
+    [string]$isoURL
 )
 
 # This function checks if the specified module is imported into the session and if not installes and/or imports it
@@ -149,7 +146,6 @@ try {
     $argumentList = "
         /q 
         /ACTION=Install 
-        /INSTANCENAME='$($SqlServerInstanceName)' 
         /FEATURES=SQL 
         /INSTANCEDIR=C:\SQL 
         /SQLSYSADMINACCOUNTS='$($SqlServerAdminAccounts)' 
@@ -159,9 +155,12 @@ try {
         /AGTSVCPASSWORD='$($SqlServerSvcPassword)' 
         /IACCEPTSQLSERVERLICENSETERMS 
         /PID='$($SqlServerProductKey)' 
-        /SQLSERVERUPDATE='$($SqlServerCU)' 
         /Edition='$($SqlServerEdition)'
     "
+    if ($SqlServerInstanceName) {
+        $argumentList += "/INSTANCENAME='$($SqlServerInstanceName)'"
+    } 
+    
     Start-Process -FilePath $setupPath -ArgumentList $argumentList
 
     # Step 7: Install SQL Arc extension with LT=PAYG
