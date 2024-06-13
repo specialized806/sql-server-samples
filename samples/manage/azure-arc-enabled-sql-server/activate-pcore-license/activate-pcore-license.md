@@ -11,7 +11,7 @@ param (
     [Parameter (Mandatory= $true)]
     [string] $LicenseId,
     [Parameter (Mandatory= $true)]
-    [string] $UseInRunbook
+    [bool] $UseInRunbook
 )
 
 function CheckModule ($m) {
