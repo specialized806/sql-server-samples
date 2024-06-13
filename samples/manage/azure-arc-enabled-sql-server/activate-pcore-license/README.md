@@ -67,7 +67,7 @@ You can scahedule to run the the command as a runbook. To set it up using Azure 
 
 1. Open a command shell on your device and run this command. It will copy the script to your local folder.
 ```console
-curl https://raw.githubusercontent.com/microsoft/sql-server-samples/master/samples/manage/azure-hybrid-benefit/sql-license-usage.ps1 -o sql-license-usage.ps1
+curl https://raw.githubusercontent.com/anosov1960/sql-server-samples/master/samples/manage/azure-arc-enabled-sql-server/activate-pcore-license/activate-pcore-license.md -o activate-pcore-license.ps1
 ```
 2. [Create a new automation account](https://ms.portal.azure.com/#create/Microsoft.AutomationAccount)  or open an existing one.
 1. Select *Run as accounts* in the **Account Settings** group, open the automatically created *Azure Run As Account* and note or copy the Display Name property. You must add this user to all the target subscriptions with at least a *Reader* access role. To collect the Unregistered vCores, the user must be at least a *Contributor*. See [Role assignment portal](https://docs.microsoft.com/en-us/azure/role-based-access-control/role-assignments-portal) for the instructions about role assignments.
