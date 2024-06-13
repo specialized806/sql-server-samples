@@ -79,6 +79,7 @@ if ($UseInRunbook){
     $requiredModules | Foreach-Object {CheckModule $_}
 }
 
-$newActivationState = "Activated"
-Set-AzResource -ResourceId $LicenseId -PropertyObject @{"properties.activationState" = $newActivationState} -Force
+$currentLicense = Get-AzResource -ResourceId $LicenseId 
+$currentLicense.properties.activationState = "Activated"
+$currentLicense | Set-AzResource -Force
 
