@@ -8,7 +8,7 @@
 
 param (
     [Parameter (Mandatory= $true)]
-    [string] $licenseId,
+    [string] $LicenseId,
     [Parameter (Mandatory= $false)]
     [string] $UseInRunbook = $true
 )
@@ -79,5 +79,5 @@ if ($UseInRunbook){
 }
 
 $newActivationState = "Activated"
-Set-AzResource -ResourceId $licenseId -PropertyObject @{"properties.activationState" = $newActivationState} -Force
+Set-AzResource -ResourceId $LicenseId -PropertyObject @{"properties.activationState" = $newActivationState} -Force
 

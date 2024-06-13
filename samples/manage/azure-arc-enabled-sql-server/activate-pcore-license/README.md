@@ -27,7 +27,7 @@ The script accepts the following command line parameters:
 
 | **Parameter** &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  | **Value** &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&nbsp; &nbsp; &nbsp; &nbsp; | **Description** |
 |:--|:--|:--|
-|-licenseId| License resource URI |
+|-LicenseId| License resource URI |
 |-UseInRunbook| \$True or \$False (default) | Optional: must be $True when executed as a Runbook|
 
 
@@ -36,7 +36,7 @@ The script accepts the following command line parameters:
 The following command activate the license 
 
 ```PowerShell
-.\activate-pcore-license.ps1 -licenseID <rsource URI>
+.\activate-pcore-license.ps1 -LicenseID <rsource URI>
 ```
 
 # Running the script using Cloud Shell
@@ -48,13 +48,13 @@ To run the script in the Cloud Shell, use the following steps:
 2. Upload the script to the shell using the following command:
 
     ```console
-    curl https://raw.githubusercontent.com/microsoft/sql-server-samples/master/samples/manage/azure-hybrid-benefit/sql-license-usage.ps1 -o sql-license-usage.ps1
+    curl https://raw.githubusercontent.com/anosov1960/sql-server-samples/master/samples/manage/azure-arc-enabled-sql-server/activate-pcore-license/activate-pcore-license.md -o activate-pcore-license.ps1
     ```
 
 3. Run the script with a set of parameters that reflect your desired configuration.
 
     ```console
-   .\activate-pcore-license.ps1 -licenseID <rsource URI>
+   .\activate-pcore-license.ps1 -licenseID <resource URI>
     ```
 
 > [!NOTE]
