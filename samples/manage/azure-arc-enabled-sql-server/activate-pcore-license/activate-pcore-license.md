@@ -3,7 +3,8 @@
 #
 # The script accepts the following command line parameters:
 #
-# -licenseID           (The specific resource URI)
+# -LicenseID            (The specific resource URI)
+# -UseInRunbook         (True to use Azure Runbook)
 #
 
 param (
