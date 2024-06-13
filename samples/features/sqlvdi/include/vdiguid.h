@@ -1,11 +1,22 @@
 
+
+/* this ALWAYS GENERATED file contains the IIDs and CLSIDs */
+
 /* link this file in with the server and any clients */
 
 
-/* File created by MIDL compiler version 7.00.0408 */
+ /* File created by MIDL compiler version 7.00.0408 */
 /* at Tue Sep 28 18:18:04 2004
  */
-
+/* Compiler settings for vdi.idl:
+    Oicf, W1, Zp8, env=Win32 (32b run)
+    protocol : dce , ms_ext, c_ext, robust
+    error checks: allocation ref bounds_check enum stub_data 
+    VC __declspec() decoration level: 
+         __declspec(uuid()), __declspec(selectany), __declspec(novtable)
+         DECLSPEC_UUID(), MIDL_INTERFACE()
+*/
+//@@MIDL_FILE_HEADING(  )
 
 #if !defined(_M_IA64) && !defined(_M_AMD64)
 
@@ -15,7 +26,7 @@
 
 #ifdef __cplusplus
 extern "C"{
-#endif
+#endif 
 
 
 #include <rpc.h>
@@ -99,8 +110,8 @@ MIDL_DEFINE_GUID(IID, IID_IServerVirtualDeviceSet2,0xAECBD0D6,0x24C6,0x11d3,0x85
 /* Compiler settings for vdi.idl:
     Oicf, W1, Zp8, env=Win64 (32b run,appending)
     protocol : dce , ms_ext, c_ext, robust
-    error checks: allocation ref bounds_check enum stub_data
-    VC __declspec() decoration level:
+    error checks: allocation ref bounds_check enum stub_data 
+    VC __declspec() decoration level: 
          __declspec(uuid()), __declspec(selectany), __declspec(novtable)
          DECLSPEC_UUID(), MIDL_INTERFACE()
 */
@@ -114,7 +125,7 @@ MIDL_DEFINE_GUID(IID, IID_IServerVirtualDeviceSet2,0xAECBD0D6,0x24C6,0x11d3,0x85
 
 #ifdef __cplusplus
 extern "C"{
-#endif
+#endif 
 
 
 #include <rpc.h>
