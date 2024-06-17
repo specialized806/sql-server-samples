@@ -44,85 +44,85 @@ All Rights Reserved.
 #include "vdierror.h"   // error constants
 #include "vdiguid.h"    // define the GUIDs 
 
-void LogError (
-    LPSTR           location,    // must always be provided
-    LPSTR           description, // NULL is acceptable
-    DWORD           errCode);    // windows status code
+void LogError(
+    const char*        location,    // must always be provided
+    const char*        description, // NULL is acceptable
+    DWORD              errCode);    // windows status code
 
-int performTransfer (
+int performTransfer(
     IClientVirtualDevice*   vd,
     int                     backup,
     int                     streamId);
 
-HANDLE execSQL (int doBackup, int nStreams);
+HANDLE execSQL(bool doBackup, int nStreams);
 
-int
-runSecondary (int streamId, IClientVirtualDeviceSet *vds);
+int runSecondary(int streamId, IClientVirtualDeviceSet2* vds);
 
-int
-startSecondaries(
-    IClientVirtualDeviceSet *vds,
-    HANDLE  hSQLProcess,  // handle to process dealing with the SQL
-    int     nStreams,     // number of i/o streams
-    char*   pgmName);    // the name of this program
+int startSecondaries(
+    IClientVirtualDeviceSet2*    vds,
+    HANDLE                       hSQLProcess,    // handle to process dealing with the SQL
+    int                          nStreams,        // number of i/o streams
+    char*                        pgmName            // the name of this program
+);
 
 // Using a GUID for the VDS Name is a good way to assure uniqueness.
 //
-WCHAR	wVdsName [100];
-
+WCHAR    wVdsName[100];
 
 //
 // main function
 //
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
     HRESULT                     hr;
-    IClientVirtualDeviceSet*    vds = NULL ; 
+    IClientVirtualDeviceSet2*   vds = nullptr;
     VDConfig                    config;
-    int                         badParm=TRUE;
-    int                         doBackup;
+    bool                        badParm = true;
+    bool                        doBackup;
     HANDLE                      hProcess;
     int                         termCode = -1;
-    int                         nStreams=1;
-    int                         isSecondary = FALSE;
+    int                         nStreams = 1;
+    bool                        isSecondary = false;
 
     // Check the input parm
     //
     if (argc >= 3)
     {
-        sscanf (argv[2], "%d", &nStreams);
+        sscanf_s(argv[2], "%d", &nStreams);
+
         switch (toupper(argv[1][0]))
         {
-            case 'B':
-                doBackup = TRUE;
-                badParm = FALSE;
-                break;
-        
-            case 'R':
-                doBackup = FALSE;
-                badParm = FALSE;
-                break;
+        case 'B':
+            doBackup = true;
+            badParm = false;
+            break;
 
-            case 'S':
-                doBackup = FALSE; // we don't know or care
-                badParm = FALSE;
-                isSecondary = TRUE;
-                // nStreams is the streamid!
-		        swprintf (wVdsName, L"%hs", argv[3]);
-                break;
+        case 'R':
+            doBackup = false;
+            badParm = false;
+            break;
+
+        case 'S':
+            doBackup = false; // we don't know or care
+            badParm = false;
+            isSecondary = true;
+
+            // nStreams is the streamid!
+            swprintf_s(wVdsName, L"%hs", argv[3]);
+            break;
         }
     }
 
     if (badParm)
     {
-        printf ("useage: mprocess {B|R} <nStreams>\n"
+        printf("usage: mprocess {B|R} <nStreams>\n"
             "Demonstrate a multistream Backup or Restore using the Virtual Device Interface\n");
-        exit (1);
+        exit(1);
     }
 
     if (isSecondary)
     {
-        printf("Secondary pid %d working on stream %d\n", GetCurrentProcessId (), nStreams);
+        printf("Secondary pid %d working on stream %d\n", GetCurrentProcessId(), nStreams);
     }
     else
     {
@@ -133,19 +133,19 @@ int main(int argc, char *argv[])
         else if (nStreams > 32)
             nStreams = 32;
 
-        printf ("Performing a %s using %d virtual device(s).\n", 
+        printf("Performing a %s using %d virtual device(s).\n",
             (doBackup) ? "BACKUP" : "RESTORE", nStreams);
     }
 
     // Initialize COM Library
     // Note: _WIN32_DCOM must be defined during the compile.
     //
-    hr = CoInitializeEx (NULL, COINIT_MULTITHREADED);
+    hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
-    if (!SUCCEEDED (hr))
+    if (FAILED(hr))
     {
-        printf ("Coinit fails: x%X\n", hr);
-        exit (1);
+        printf("Coinit fails: x%X\n", hr);
+        exit(1);
     }
 
 
@@ -153,19 +153,19 @@ int main(int argc, char *argv[])
     // Notice how we use a single IID for both the class and interface
     // identifiers.
     //
-    hr = CoCreateInstance ( 
+    hr = CoCreateInstance(
         IID_IClientVirtualDeviceSet,
-        NULL, 
+        nullptr,
         CLSCTX_INPROC_SERVER,
         IID_IClientVirtualDeviceSet,
         (void**)&vds);
 
-    if (!SUCCEEDED (hr))
+    if (FAILED(hr))
     {
         // This failure might happen if the DLL was not registered.
         //
-        printf ("Could not create component: x%X\n", hr);
-        printf ("Check registration of SQLVDI.DLL and value of IID\n");
+        printf("Could not create component: x%X\n", hr);
+        printf("Check registration of SQLVDI.DLL and value of IID\n");
         goto exit;
     }
 
@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
     //
     if (isSecondary)
     {
-        termCode = runSecondary (nStreams, vds);
+        termCode = runSecondary(nStreams, vds);
 
         goto exit;
     }
@@ -189,22 +189,26 @@ int main(int argc, char *argv[])
     // The server will treat the virtual device just like a pipe:
     // I/O will be strictly sequential with only the basic commands.
     //
-    memset (&config, 0, sizeof(config));
+    memset(&config, 0, sizeof(config));
 
     config.deviceCount = nStreams;
 
-	// Create a GUID to use for a unique virtual device name
-	//
-	GUID	vdsId;
-	CoCreateGuid (&vdsId);
-	StringFromGUID2 (vdsId, wVdsName, 49);
+    // Create a GUID to use for a unique virtual device name
+    //
+    GUID    vdsId;
+    CoCreateGuid(&vdsId);
+    StringFromGUID2(vdsId, wVdsName, 49);
 
     // Create the virtual device set
+    // for use by the default instance.
+    // 
+    // To use a named instance, change the 
+    // first parameter in CreateEx to your instance's name.
     //
-    hr = vds->Create (wVdsName, &config);
-    if (!SUCCEEDED (hr))
+    hr = vds->CreateEx(nullptr, wVdsName, &config);
+    if (FAILED(hr))
     {
-        printf ("VDS::Create fails: x%X", hr);
+        printf("VDS::Create fails: x%X", hr);
         goto exit;
     }
 
@@ -212,10 +216,10 @@ int main(int argc, char *argv[])
     //
     printf("\nSending the SQL...\n");
 
-    hProcess = execSQL (doBackup, nStreams);
-    if (hProcess == NULL)
+    hProcess = execSQL(doBackup, nStreams);
+    if (hProcess == nullptr)
     {
-        printf ("execSQL failed.\n");
+        printf("execSQL failed.\n");
         goto shutdown;
     }
 
@@ -225,33 +229,33 @@ int main(int argc, char *argv[])
     //
     printf("\nWaiting for SQL to complete configuration...\n");
 
-    hr = vds->GetConfiguration (15000, &config);
-    if (!SUCCEEDED (hr))
+    hr = vds->GetConfiguration(15000, &config);
+    if (FAILED(hr))
     {
-        printf ("VDS::Getconfig fails: x%X\n", hr);
+        printf("VDS::Getconfig fails: x%X\n", hr);
         goto shutdown;
     }
 
     // Handle the virtual devices in secondary processes.
     //
-    printf ("\nSpawning secondary processes...\n");
-    termCode = startSecondaries (vds, hProcess, nStreams, argv[0]);
-    
+    printf("\nSpawning secondary processes...\n");
+    termCode = startSecondaries(vds, hProcess, nStreams, argv[0]);
+
 shutdown:
 
     // Close the set
     //
-    vds->Close ();
+    vds->Close();
 
     // COM reference counting: Release the interface.
     //
-    vds->Release () ;
+    vds->Release();
 
 exit:
 
     // Uninitialize COM Library
     //
-    CoUninitialize () ;
+    CoUninitialize();
 
     return termCode;
 }
@@ -263,47 +267,51 @@ exit:
 //  NULL    : failed to start isql
 //  else    : process handle
 //
-HANDLE execSQL (int doBackup, int nStreams)
+HANDLE execSQL(bool doBackup, int nStreams)
 {
-    char                    cmd[5000];
-    char                    extend[100];
+    WCHAR                   cmd[5000];
+    WCHAR                   extend[100];
     PROCESS_INFORMATION     pi;
     STARTUPINFO             si;
     int                     ix;
 
     // Build the SQL, submitting it via 'isql'
     // If you want to use Windows NT Authentication, please do not use the -U or -P options.
-    sprintf (cmd, 
-        "osql -E -b -Q\"%s DATABASE PUBS %s VIRTUAL_DEVICE='%ls'",
-        (doBackup) ? "BACKUP" : "RESTORE",
-        (doBackup) ? "TO"     : "FROM",
-		wVdsName);
-    
-    for (ix=1; ix<nStreams; ix++)
+    // 
+    // To use a named instance, change "-S ." to "-S .\\instance_name"
+    //
+    swprintf_s(cmd, L"osql -S . -E -b -Q\"%s DATABASE PUBS %s VIRTUAL_DEVICE='%ls'",
+        (doBackup) ? L"BACKUP" : L"RESTORE",
+        (doBackup) ? L"TO" : L"FROM",
+        wVdsName);
+
+    for (ix = 1; ix < nStreams; ix++)
     {
-        sprintf (extend, ", VIRTUAL_DEVICE='%ls%d'", wVdsName, ix);
-        strcat (cmd, extend);
+        swprintf_s(extend, L", VIRTUAL_DEVICE='%ls%d'", wVdsName, ix);
+        wcscat_s(cmd, extend);
     }
 
-    strcat (cmd, "\"");
+    wcscat_s(cmd, L"\"");
 
-    printf ("Submitting SQL:\n%s\n\n", cmd);
+    wprintf(L"Submitting SQL:\n%s\n\n", cmd);
 
     // use my process for startup info
     //
-    GetStartupInfo (&si);
+    GetStartupInfo(&si);
 
-    if (!CreateProcess (NULL, cmd, NULL, NULL,
-            TRUE,   // inherit handles (stdin/stdout)
-            0,      // creation flags,
-            NULL, NULL,
-            &si,    // startup info
-            &pi))   // out: process info
+    if (!CreateProcess(nullptr, cmd, nullptr, nullptr,
+        true,   // inherit handles (stdin/stdout)
+        0,      // creation flags,
+        nullptr, nullptr,
+        &si,    // startup info
+        &pi))   // out: process info
     {
-        LogError ("startSecondary", "CreateProcess", GetLastError ());
-        return NULL;
+        LogError("startSecondary", "CreateProcess", GetLastError());
+        return nullptr;
     }
-    
+
+    CloseHandle(pi.hThread);
+
     // Return the process handle
     //
     return (pi.hProcess);
@@ -316,53 +324,56 @@ HANDLE execSQL (int doBackup, int nStreams)
 // Returns: 0 if no errors were detected.
 //
 //
-int
-startSecondaries(
-    IClientVirtualDeviceSet *vds,
-    HANDLE  hSQLProcess,  // handle to process dealing with the SQL
-    int     nStreams,     // number of i/o streams
-    char*   pgmName)      // the name of this program
+int startSecondaries(
+    IClientVirtualDeviceSet2*    vds,
+    HANDLE                       hSQLProcess,    // handle to process dealing with the SQL
+    int                          nStreams,        // number of i/o streams
+    char*                        pgmName            // the name of this program
+)
 {
-    int ix,nActive;
-    HANDLE      children[33];  // 32 is maximum number of streams.
-                               // plus one for the isql process.
-    DWORD   waitStatus, exitCode;
-    char                    cmd[200];
+    int                       ix, nActive;
+    HANDLE                    children[33];    // 32 is maximum number of streams.
+
+    // plus one for the isql process.
+    DWORD                   waitStatus, exitCode;
+    WCHAR                   cmd[200];
     PROCESS_INFORMATION     pi;
     STARTUPINFO             si;
 
     // use my process for startup info
     //
-    GetStartupInfo (&si);
+    GetStartupInfo(&si);
 
-    for (ix=0; ix<nStreams; ix++)
+    for (ix = 0; ix < nStreams; ix++)
     {
-        sprintf (cmd, "%s s %d %ls", pgmName, ix, wVdsName);
+        swprintf_s(cmd, L"%hs s %d %ls", pgmName, ix, wVdsName);
 
-        if (!CreateProcess (NULL, cmd, NULL, NULL,
-            TRUE,   // inherit handles (just stdin/stdout I hope!)
+        if (!CreateProcess(nullptr, cmd, nullptr, nullptr,
+            true,   // inherit handles (just stdin/stdout I hope!)
             0,      // creation flags,
-            NULL, NULL,
+            nullptr, nullptr,
             &si,    // startup info
             &pi))   // out: process info
         {
-            printf ("Error starting %s\n", cmd);
-            LogError ("startSecondary", "CreateProcess", GetLastError ());
+            wprintf(L"Error starting %s\n", cmd);
+            LogError("startSecondary", "CreateProcess", GetLastError());
             goto errorExit;
         }
         // keep the process handle
         children[ix] = pi.hProcess;
+
+        CloseHandle(pi.hThread);
     }
 
     // Add the isql process into the array
     //
     children[nStreams] = hSQLProcess;
-    nActive = nStreams+1;
+    nActive = nStreams + 1;
 
     // Wait for all to finish.
     // Max wait is one minute for this tiny test.
     //
-    printf ("All children are now running.\n"
+    printf("All children are now running.\n"
         "Waiting for their completion...\n");
 
     // Notice how this differs from the threaded model in mthread.cpp.
@@ -376,11 +387,11 @@ startSecondaries(
     {
         // Wait for any completion
         //
-        waitStatus = WaitForMultipleObjects (nActive, children, 
+        waitStatus = WaitForMultipleObjects(nActive, children,
             FALSE, INFINITE);
 
         if (waitStatus >= WAIT_OBJECT_0 &&
-            waitStatus < WAIT_OBJECT_0+nActive)
+            waitStatus < WAIT_OBJECT_0 + nActive)
         {
             // One of the children completed.
             // Determine which one.
@@ -389,15 +400,15 @@ startSecondaries(
 
             // Check its completion code
             //
-            if (!GetExitCodeProcess (children[ix], &exitCode))
+            if (!GetExitCodeProcess(children[ix], &exitCode))
             {
-                LogError ("startSecondary", "GetExitCode", GetLastError ());
+                LogError("startSecondary", "GetExitCode", GetLastError());
                 goto errorExit;
             }
 
             if (exitCode != 0)
             {
-                printf ("A child exitted with code %d\n", exitCode);
+                printf("A child exitted with code %d\n", exitCode);
                 goto errorExit;
             }
 
@@ -407,12 +418,12 @@ startSecondaries(
             // handling, we don't need to do it, as handles are automatically
             // closed as part of process termination.
             //
-            CloseHandle (children[ix]);
+            CloseHandle(children[ix]);
 
             // Remove the handle for this child
             //
-            memmove (&children[ix], &children[ix+1], 
-                sizeof (HANDLE) * (nActive-ix-1));
+            memmove(&children[ix], &children[ix + 1],
+                sizeof(HANDLE) * (nActive - ix - 1));
 
             nActive--;
 
@@ -425,7 +436,7 @@ startSecondaries(
 
     } while (nActive > 0);
 
-    printf ("All children completed successfully\n");
+    printf("All children completed successfully\n");
 
     return 0;
 
@@ -435,7 +446,7 @@ errorExit:
     //  to terminate processing.
     //  Thus, we don't bother waiting for any children to terminate.
     //
-    vds->SignalAbort ();
+    vds->SignalAbort();
     return -1;
 
 }
@@ -444,8 +455,7 @@ errorExit:
 // Perform secondary client processing
 // Return 0 if no errors detected, else nonzero.
 //
-int
-runSecondary (int streamId, IClientVirtualDeviceSet *vds)
+int runSecondary(int streamId, IClientVirtualDeviceSet2* vds)
 {
     HRESULT                         hr;
     WCHAR                           devName[100];
@@ -459,7 +469,7 @@ runSecondary (int streamId, IClientVirtualDeviceSet *vds)
     {
         // The first device has the same name as the set.
         //
-        wcscpy (devName, wVdsName);
+        wcscpy_s(devName, wVdsName);
     }
     else
     {
@@ -467,41 +477,44 @@ runSecondary (int streamId, IClientVirtualDeviceSet *vds)
         // for additional devices.  You are free to name them
         // as you wish.
         //
-        swprintf (devName, L"%ls%d", wVdsName, streamId);
+        swprintf_s(devName, L"%ls%d", wVdsName, streamId);
     }
 
     // Open the virtual device set in this secondary process.
     //
-    hr = vds->OpenInSecondary (wVdsName);
-    if (!SUCCEEDED (hr))
+    // To use a named instance, change the 
+    // first parameter in OpenInSecondaryEx to your instance's name.
+    //
+    hr = vds->OpenInSecondaryEx(nullptr, wVdsName);
+    if (FAILED(hr))
     {
-        printf ("VD::Open(%ls) fails: x%X", devName, hr);
+        wprintf(L"VD::Open(%ls) fails: x%X", devName, hr);
         return -1;
     }
 
     // Open the device assigned to this process.
     //
-    hr = vds->OpenDevice (devName, &vd);
-    if (!SUCCEEDED (hr))
+    hr = vds->OpenDevice(devName, &vd);
+    if (FAILED(hr))
     {
-        printf ("OpenDevice fails on %ls: x%X", devName, hr);
+        wprintf(L"OpenDevice fails on %ls: x%X", devName, hr);
         return -1;
     }
 
     // Grab the config to figure out data direction
     //
-    hr = vds->GetConfiguration (INFINITE, &config);
-    if (!SUCCEEDED (hr))
+    hr = vds->GetConfiguration(INFINITE, &config);
+    if (FAILED(hr))
     {
-        printf ("VDS::Getconfig fails: x%X\n", hr);
+        wprintf(L"VDS::Getconfig fails: x%X\n", hr);
         termCode = -1;
         goto errExit;
     }
 
-    printf ("\nPerforming data transfer...\n");
-        
-    termCode = performTransfer (vd, 
-        (config.features&VDF_WriteMedia), streamId);
+    printf("\nPerforming data transfer...\n");
+
+    termCode = performTransfer(vd,
+        (config.features & VDF_WriteMedia), streamId);
 
 errExit:
 
@@ -509,10 +522,10 @@ errExit:
     //
     if (termCode != 0)
     {
-        vds->SignalAbort ();
+        vds->SignalAbort();
     }
 
-    vds->Close ();
+    vds->Close();
 
     return termCode;
 }
@@ -523,80 +536,80 @@ errExit:
 //
 // Returns 0, if no errors are detected, else non-zero.
 //
-int performTransfer (
+int performTransfer(
     IClientVirtualDevice*   vd,
     int                     backup,
     int                     streamId)
 {
-    FILE *          fh;
-    char            fname[80];
-    VDC_Command *   cmd;
-    DWORD           completionCode;
-    DWORD           bytesTransferred;
-    HRESULT         hr;
-    int             termCode = -1;
+    FILE*                fh;
+    char                 fname[80];
+    VDC_Command*         cmd;
+    DWORD                completionCode;
+    DWORD                bytesTransferred;
+    HRESULT              hr;
+    int                  termCode = -1;
 
-    sprintf (fname, "multi.%d.dmp", streamId);
+    sprintf_s(fname, "multi.%d.dmp", streamId);
 
-    fh = fopen (fname, (backup)? "wb" : "rb");
-    if (fh == NULL )
+    errno_t error = fopen_s(&fh, fname, (backup) ? "wb" : "rb");
+    if (error != 0)
     {
-        printf ("Failed to open: %s\n", fname);
+        printf("Failed to open: %s\n", fname);
         return -1;
     }
 
-    while (SUCCEEDED (hr=vd->GetCommand (INFINITE, &cmd)))
+    while (SUCCEEDED(hr = vd->GetCommand(INFINITE, &cmd)))
     {
         bytesTransferred = 0;
         switch (cmd->commandCode)
         {
-            case VDC_Read:
-                bytesTransferred = fread (cmd->buffer, 1, cmd->size, fh);
-                if (bytesTransferred == cmd->size)
-                    completionCode = ERROR_SUCCESS;
-                else
-                    // assume failure is eof
-                    completionCode = ERROR_HANDLE_EOF;
-
-                break;
-
-            case VDC_Write:
-                bytesTransferred = fwrite (cmd->buffer, 1, cmd->size, fh);
-                if (bytesTransferred == cmd->size )
-                {
-                    completionCode = ERROR_SUCCESS;
-                }
-                else
-                    // assume failure is disk full
-                    completionCode = ERROR_DISK_FULL;
-                break;
-
-            case VDC_Flush:
-                fflush (fh);
+        case VDC_Read:
+            bytesTransferred = fread(cmd->buffer, 1, cmd->size, fh);
+            if (bytesTransferred == cmd->size)
                 completionCode = ERROR_SUCCESS;
-                break;
-    
-            case VDC_ClearError:
-                completionCode = ERROR_SUCCESS;
-                break;
+            else
+                // assume failure is eof
+                completionCode = ERROR_HANDLE_EOF;
 
-            default:
-                // If command is unknown...
-                completionCode = ERROR_NOT_SUPPORTED;
+            break;
+
+        case VDC_Write:
+            bytesTransferred = fwrite(cmd->buffer, 1, cmd->size, fh);
+            if (bytesTransferred == cmd->size)
+            {
+                completionCode = ERROR_SUCCESS;
+            }
+            else
+                // assume failure is disk full
+                completionCode = ERROR_DISK_FULL;
+            break;
+
+        case VDC_Flush:
+            fflush(fh);
+            completionCode = ERROR_SUCCESS;
+            break;
+
+        case VDC_ClearError:
+            completionCode = ERROR_SUCCESS;
+            break;
+
+        default:
+            // If command is unknown...
+            completionCode = ERROR_NOT_SUPPORTED;
         }
 
 
-        hr = vd->CompleteCommand (cmd, completionCode, bytesTransferred, 0);
-        if (!SUCCEEDED (hr))
+        hr = vd->CompleteCommand(cmd, completionCode, bytesTransferred, 0);
+        if (FAILED(hr))
         {
-            printf ("Completion Failed: x%X\n", hr);
+            printf("Completion Failed: x%X\n", hr);
             break;
         }
     }
 
     if (hr != VD_E_CLOSE)
     {
-        printf ("Unexpected termination: x%X\n", hr);
+        printf("Unexpected termination: x%X\n", hr);
     }
     else
     {
@@ -605,11 +618,11 @@ int performTransfer (
         // must determine if the backup/restore was
         // really successful.
         //
-        printf ("Successfully completed data transfer.\n");
+        printf("Successfully completed data transfer.\n");
         termCode = 0;
     }
 
-    fclose (fh);
+    fclose(fh);
 
     return termCode;
 }
@@ -618,31 +631,31 @@ int performTransfer (
 // 
 // A simple error logger.
 //
-void LogError (
-    LPSTR           location,    // must always be provided
-    LPSTR           description, // NULL is acceptable
-    DWORD           errCode)     // windows status code
+void LogError(
+    const char*        location,    // must always be provided
+    const char*        description, // NULL is acceptable
+    DWORD              errCode)     // windows status code
 {
-    LPVOID lpMsgBuf;
+    LPWSTR lpMsgBuf = nullptr;
 
-    printf (
+    printf(
         "Error at %s: %s StatusCode: %X\n",
-        location, 
-        (description==NULL)?"":description,
+        location,
+        (description == nullptr) ? "" : description,
         errCode);
 
     // Attempt to explain the code
     //
     if (errCode != 0 && FormatMessage(
-        FORMAT_MESSAGE_ALLOCATE_BUFFER | 
-            FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,    
-        NULL,
+        FORMAT_MESSAGE_ALLOCATE_BUFFER |
+        FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+        nullptr,
         errCode,
         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
-        (LPTSTR) &lpMsgBuf,    0,    NULL ) )// Process any inserts in lpMsgBuf.
+        reinterpret_cast<LPWSTR>(&lpMsgBuf), 0, nullptr))// Process any inserts in lpMsgBuf.
     {
-        printf ("Explanation: %s\n", lpMsgBuf);
-        LocalFree( lpMsgBuf );
+        printf("Explanation: %ls\n", lpMsgBuf);
+        LocalFree(lpMsgBuf);
     }
 }
 

@@ -37,33 +37,33 @@ All Rights Reserved.
 #include "vdierror.h"   // error constants
 
 #include "vdiguid.h"    // define the interface identifiers.
-			// IMPORTANT: vdiguid.h can only be included in one source file.
-			// 
+                        // IMPORTANT: vdiguid.h can only be included in one source file.
+                        //
 
-
-void performTransfer (
+void performTransfer(
     IClientVirtualDevice*   vd,
-    int                     backup );
+    bool                    backup);
 
-int execSQL (int doBackup);
+int execSQL(bool doBackup);
 
 // Using a GUID for the VDS Name is a good way to assure uniqueness.
 //
-WCHAR	wVdsName [50];
+WCHAR    wVdsName[50];
 
 
 //
 // main function
 //
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
     HRESULT                     hr;
-    IClientVirtualDeviceSet2*   vds = NULL ; 
-    IClientVirtualDevice*       vd=NULL;
+    IClientVirtualDeviceSet2*   vds = nullptr;
+    IClientVirtualDevice*       vd = nullptr;
 
     VDConfig                    config;
-    int                         badParm=TRUE;
-    int                         doBackup;
+    bool                        badParm = true;
+    bool                        doBackup;
+    bool                        isUnnamed = false;
     int                         hProcess;
     int                         termCode;
 
@@ -71,55 +71,53 @@ int main(int argc, char *argv[])
     //
     if (argc == 2)
     {
-        if (toupper(argv[1][0]) == 'B')
+        char param = toupper(argv[1][0]);
+
+        if (param == 'B')
         {
-            doBackup = TRUE;
-            badParm = FALSE;
+            doBackup = true;
+            badParm = false;
         }
-        else if (toupper(argv[1][0]) == 'R')
+        else if (param == 'R')
         {
-            doBackup = FALSE;
-            badParm = FALSE;
+            doBackup = false;
+            badParm = false;
         }
     }
 
     if (badParm)
     {
-        printf ("useage: simple {B|R}\n"
+        printf("usage: simple {B|R}\n"
             "Demonstrate a Backup or Restore using the Virtual Device Interface\n");
-        exit (1);
+        exit(1);
     }
 
     // Initialize COM Library
     // Note: _WIN32_DCOM must be defined during the compile.
     //
-    hr = CoInitializeEx (NULL, COINIT_MULTITHREADED);
+    hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
-    if (!SUCCEEDED (hr))
+    if (FAILED(hr))
     {
-        printf ("Coinit fails: x%X\n", hr);
-        exit (1);
+        printf("Coinit fails: x%X\n", hr);
+        exit(1);
     }
 
     // Get an interface to the device set.
-    // Changes from SQLServer v7.0: 
-	//    - we've introduced a symbol for the class ID.
-	//    - We've added a new "multi-instance-aware" interface.
-    //
-    hr = CoCreateInstance ( 
-        CLSID_MSSQL_ClientVirtualDeviceSet,  
-	    NULL, 
-	    CLSCTX_INPROC_SERVER,
-	    IID_IClientVirtualDeviceSet2,
-	    (void**)&vds);
+    hr = CoCreateInstance(
+        CLSID_MSSQL_ClientVirtualDeviceSet,
+        nullptr,
+        CLSCTX_INPROC_SERVER,
+        IID_IClientVirtualDeviceSet2,
+        (void**)&vds);
 
-    if (!SUCCEEDED (hr))
+    if (FAILED(hr))
     {
         // This failure might happen if the DLL was not registered,
-	// or if the application is using the wrong interface id (IID).
+        // or if the application is using the wrong interface id (IID).
         //
-        printf ("Could not create component: x%X\n", hr);
-        printf ("Check registration of SQLVDI.DLL and value of IID\n");
+        printf("Could not create component: x%X\n", hr);
+        printf("Check registration of SQLVDI.DLL and value of IID\n");
         goto exit;
     }
 
@@ -130,23 +128,25 @@ int main(int argc, char *argv[])
     // The server will treat the virtual device just like a pipe:
     // I/O will be strictly sequential with only the basic commands.
     //
-    memset (&config, 0, sizeof(config));
+    memset(&config, 0, sizeof(config));
     config.deviceCount = 1;
 
-	// Create a GUID to use for a unique virtual device name
-	//
-	GUID	vdsId;
-	CoCreateGuid (&vdsId);
-	StringFromGUID2 (vdsId, wVdsName, 49);
+    // Create a GUID to use for a unique virtual device name
+    //
+    GUID    vdsId;
+    CoCreateGuid(&vdsId);
+    StringFromGUID2(vdsId, wVdsName, 49);
 
     // Create the virtual device set
-	// for use by the default instance.
-    // Change the first parameter to identify a named instance.
-	//
-    hr = vds->CreateEx (NULL, wVdsName, &config);
-    if (!SUCCEEDED (hr))
+    // for use by the default instance.
+    // 
+    // To use a named instance, change the 
+    // first parameter in CreateEx to your instance's name.
+    //
+    hr = vds->CreateEx(nullptr, wVdsName, &config);
+    if (FAILED(hr))
     {
-        printf ("VDS::Create fails: x%X", hr);
+        printf("VDS::Create fails: x%X", hr);
         goto exit;
     }
 
@@ -154,49 +154,49 @@ int main(int argc, char *argv[])
     //
     printf("\nSending the SQL...\n");
 
-    hProcess = execSQL (doBackup);
+    hProcess = execSQL(doBackup);
     if (hProcess == -1)
     {
-        printf ("execSQL failed.\n");
+        printf("execSQL failed.\n");
         goto shutdown;
     }
 
     // Wait for the server to connect, completing the configuration.
     //
-    hr = vds->GetConfiguration (10000, &config);
-    if (!SUCCEEDED (hr))
+    hr = vds->GetConfiguration(10000, &config);
+    if (FAILED(hr))
     {
-        printf ("VDS::Getconfig fails: x%X\n", hr);
+        printf("VDS::Getconfig fails: x%X\n", hr);
         if (hr == VD_E_TIMEOUT)
         {
-            printf ("Timed out. Was Microsoft SQLServer running?\n");
+            printf("Timed out. Was Microsoft SQLServer running?\n");
         }
         goto shutdown;
     }
 
     // Open the single device in the set.
     //
-    hr = vds->OpenDevice (wVdsName, &vd);
-    if (!SUCCEEDED(hr))
+    hr = vds->OpenDevice(wVdsName, &vd);
+    if (FAILED(hr))
     {
-        printf ("VDS::OpenDevice fails: x%X\n", hr);
+        printf("VDS::OpenDevice fails: x%X\n", hr);
         goto shutdown;
     }
 
-    printf ("\nPerforming data transfer...\n");
-    
-    performTransfer (vd, doBackup);
-    
-    
+    printf("\nPerforming data transfer...\n");
+
+    performTransfer(vd, doBackup);
+
+
 shutdown:
 
     // Close the set
     //
-    vds->Close ();
+    vds->Close();
 
     // Obtain the SQL completion information, by waiting for isql to exit.
     //
-    if (hProcess == _cwait( &termCode, hProcess, NULL))
+    if (hProcess == _cwait(&termCode, hProcess, 0))
     {
         if (termCode == 0)
             printf("\nThe SQL command executed successfully.\n");
@@ -205,7 +205,7 @@ shutdown:
     }
     else
     {
-        printf ("cwait failed: %d\n", errno);
+        printf("cwait failed: %d\n", errno);
     }
 
     // COM reference counting: Release the interface.
@@ -215,15 +215,15 @@ shutdown:
     // that it currently has.  Of course that applies to 
     // a real application, not this simple sample!
     //
-    vds->Release () ;
+    vds->Release();
 
 exit:
 
     // Uninitialize COM Library
     //
-    CoUninitialize () ;
+    CoUninitialize();
 
-    return 0 ;
+    return 0;
 }
 
 //
@@ -233,104 +233,105 @@ exit:
 //  -1      : failed to spawn
 //  else    : a "process handle" 
 //
-int execSQL (int doBackup)
+int execSQL(bool doBackup)
 {
-	char	sqlCommand [1024];		// plenty of space for our purpose
+    wchar_t    sqlCommand[1024];        // plenty of space for our purpose
 
-	sprintf (sqlCommand, "-Q\"%s DATABASE PUBS %s VIRTUAL_DEVICE='%ls'\"",
-		(doBackup) ? "BACKUP" : "RESTORE",
-		(doBackup) ? "TO" : "FROM",
-		wVdsName);
-    int rc;
+    // To use a named instance, change "-S ." to "-S .\\instance_name"
+    swprintf_s(sqlCommand, L"-S . -Q\"%s DATABASE PUBS %s VIRTUAL_DEVICE='%ls'\"",
+        (doBackup) ? L"BACKUP" : L"RESTORE",
+        (doBackup) ? L"TO" : L"FROM",
+        wVdsName);
+    intptr_t rc;
 
-	printf ("spawning osql to execute: %s\n", sqlCommand);
+    wprintf(L"spawning osql to execute: %ls\n", sqlCommand);
 
     // Spawn off the osql utility to execute the SQL.
     // Notice the '-b' which causes an error to set a non-zero
     // exit code on error.
-	//
-    rc = _spawnlp( _P_NOWAIT, "osql", "osql", "-E", "-b",
+    //
+    rc = _wspawnlp(_P_NOWAIT, L"osql", L"osql", L"-E", L"-b",
         sqlCommand, NULL);
 
     if (rc == -1)
     {
-        printf ("Spawn failed with error: %d\n", errno);
+        printf("Spawn failed with error: %d\n", errno);
     }
-    
+
     return (rc);
 }
 
 // This routine reads commands from the server until a 'Close' status is received.
 // It simply reads or writes a file 'superbak.dmp' in the current directory.
 //
-void performTransfer (
-    IClientVirtualDevice*   vd,
-    int                     backup )
+void performTransfer(
+    IClientVirtualDevice*       vd,
+    bool                        backup)
 {
-    FILE *          fh;
-    char*           fname = "superbak.dmp";
-    VDC_Command *   cmd;
+    FILE*           fh;
+    char*           fname = (char*)"superbak.dmp";
+    VDC_Command*    cmd;
     DWORD           completionCode;
     DWORD           bytesTransferred;
     HRESULT         hr;
 
-    fh = fopen (fname, (backup)? "wb" : "rb");
-    if (fh == NULL )
+    errno_t error = fopen_s(&fh, fname, (backup) ? "wb" : "rb");
+    if (error != 0)
     {
-        printf ("Failed to open: %s\n", fname);
+        printf("Failed to open: %s\n", fname);
         return;
     }
 
-    while (SUCCEEDED (hr=vd->GetCommand (INFINITE, &cmd)))
+    while (SUCCEEDED(hr = vd->GetCommand(INFINITE, &cmd)))
     {
         bytesTransferred = 0;
         switch (cmd->commandCode)
         {
-            case VDC_Read:
-                bytesTransferred = fread (cmd->buffer, 1, cmd->size, fh);
-                if (bytesTransferred == cmd->size)
-                    completionCode = ERROR_SUCCESS;
-                else
-                    // assume failure is eof
-                    completionCode = ERROR_HANDLE_EOF;
-                break;
-
-            case VDC_Write:
-                bytesTransferred = fwrite (cmd->buffer, 1, cmd->size, fh);
-                if (bytesTransferred == cmd->size )
-                {
-                    completionCode = ERROR_SUCCESS;
-                }
-                else
-                    // assume failure is disk full
-                    completionCode = ERROR_DISK_FULL;
-                break;
-
-            case VDC_Flush:
-                fflush (fh);
+        case VDC_Read:
+            bytesTransferred = fread(cmd->buffer, 1, cmd->size, fh);
+            if (bytesTransferred == cmd->size)
                 completionCode = ERROR_SUCCESS;
-                break;
-    
-            case VDC_ClearError:
-                completionCode = ERROR_SUCCESS;
-                break;
+            else
+                // assume failure is eof
+                completionCode = ERROR_HANDLE_EOF;
+            break;
 
-            default:
-                // If command is unknown...
-                completionCode = ERROR_NOT_SUPPORTED;
+        case VDC_Write:
+            bytesTransferred = fwrite(cmd->buffer, 1, cmd->size, fh);
+            if (bytesTransferred == cmd->size)
+            {
+                completionCode = ERROR_SUCCESS;
+            }
+            else
+                // assume failure is disk full
+                completionCode = ERROR_DISK_FULL;
+            break;
+
+        case VDC_Flush:
+            fflush(fh);
+            completionCode = ERROR_SUCCESS;
+            break;
+
+        case VDC_ClearError:
+            completionCode = ERROR_SUCCESS;
+            break;
+
+        default:
+            // If command is unknown...
+            completionCode = ERROR_NOT_SUPPORTED;
         }
 
-        hr = vd->CompleteCommand (cmd, completionCode, bytesTransferred, 0);
-        if (!SUCCEEDED (hr))
+        hr = vd->CompleteCommand(cmd, completionCode, bytesTransferred, 0);
+        if (FAILED(hr))
         {
-            printf ("Completion Failed: x%X\n", hr);
+            printf("Completion Failed: x%X\n", hr);
             break;
         }
     }
 
     if (hr != VD_E_CLOSE)
     {
-        printf ("Unexpected termination: x%X\n", hr);
+        printf("Unexpected termination: x%X\n", hr);
     }
     else
     {
@@ -339,10 +340,8 @@ void performTransfer (
         // must determine if the backup/restore was
         // really successful.
         //
-        printf ("Successfully completed data transfer.\n");
+        printf("Successfully completed data transfer.\n");
     }
 
-    fclose (fh);
+    fclose(fh);
 }
-
-

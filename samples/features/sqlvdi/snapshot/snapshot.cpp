@@ -20,7 +20,7 @@ All Rights Reserved.
 // on some instance of sql server.
 //
 // The program accepts input:
-//	{b | r} <databaseName> [<instanceName>]
+//    {b | r} <databaseName> [<instanceName>]
 //  b -> backup
 //  r -> restore
 //
@@ -46,109 +46,112 @@ All Rights Reserved.
 #include "vdierror.h"   // error constants
 
 #include "vdiguid.h"    // define the interface identifiers.
-			// IMPORTANT: vdiguid.h can only be included in one source file.
-			// 
+                        // IMPORTANT: vdiguid.h can only be included in one source file.
+                        // 
 
 #include <windows.h>
 #include "sql.h"
 #include "sqlext.h"
 #include "odbcss.h"
 
-void performTransfer (
-    IClientVirtualDeviceSet2*   vds,
-    IClientVirtualDevice*   vd,
-    int                     backup );
+void performTransfer(
+    IClientVirtualDeviceSet2*      vds,
+    IClientVirtualDevice*          vd,
+    int                            backup);
 
-HANDLE execSQL (int doBackup, char* pInstanceName, char* pDbName, WCHAR* pVdsName);
-int checkSQL (HANDLE);
+HANDLE execSQL(bool doBackup, WCHAR* pInstanceName, WCHAR* pDbName, WCHAR* pVdsName);
+bool checkSQL(HANDLE);
 
-BOOL
-ynPrompt (char *str);
+bool ynPrompt(const char* str);
 
 //------------------------------------------------------------
 //
 // Mainline
 //
 int __cdecl
-main (int argc, char *argv[])
+main(int argc, char* argv[])
 {
     HRESULT                     hr;
-    IClientVirtualDeviceSet2*   vds = NULL ; 
-    IClientVirtualDevice*       vd=NULL;
+    IClientVirtualDeviceSet2*   vds = nullptr;
+    IClientVirtualDevice*       vd = nullptr;
 
     VDConfig                    config;
-    int                         badParm=TRUE;
-    int                         doBackup;
-	HANDLE	hThread = NULL;
-	char*						pDbName = NULL;
-	char*						pInstanceName = NULL;
+    bool                        badParm = true;
+    bool                        doBackup;
+    HANDLE                      hThread = nullptr;
+    char*                       pDbName = nullptr;
+    char*                       pInstanceName = nullptr;
+    WCHAR                       wInstanceName[128] = { 0 };
+    int                         rc = 0;
 
     // Check the input parm
     //
     if (argc >= 3)
     {
-        if (toupper(argv[1][0]) == 'B')
+        char param = toupper(argv[1][0]);
+
+        if (param == 'B')
         {
-            doBackup = TRUE;
-            badParm = FALSE;
+            doBackup = true;
+            badParm = false;
         }
-        else if (toupper(argv[1][0]) == 'R')
+        else if (param == 'R')
         {
-            doBackup = FALSE;
-            badParm = FALSE;
+            doBackup = false;
+            badParm = false;
         }
 
-		pDbName = argv[2];
+        pDbName = argv[2];
 
-		if (argc == 4)
-		{
-			pInstanceName = argv[3];
-		}
+        if (argc == 4)
+        {
+            pInstanceName = argv[3];
+        }
     }
 
     if (badParm)
     {
-        printf ("useage: snapshot {B|R} <databaseName> [<instanceName>]\n"
+        printf("usage: snapshot {B|R} <databaseName> [<instanceName>]\n"
             "Demonstrate a Backup or Restore WITH SNAPSHOT\n");
-		printf ("\n\n** NOTE **\n The ability to take or mount snapshots must be implemented\n"
-			"before this sample is truely functional.\n");
-        exit (1);
+        printf("\n\n** NOTE **\n The ability to take or mount snapshots must be implemented\n"
+            "before this sample is truely functional.\n");
+        exit(1);
     }
 
-    printf ("Performing a %s of %s on %s using a VIRTUAL_DEVICE.\n", 
+    printf("Performing a %s of %s on %s using a VIRTUAL_DEVICE.\n",
         (doBackup) ? "BACKUP" : "RESTORE",
-		pDbName,
-		(pInstanceName) ? pInstanceName : "Default");
+        pDbName,
+        (pInstanceName) ? pInstanceName : "Default");
 
     // Initialize COM Library
     // Note: _WIN32_DCOM must be defined during the compile.
     //
-    hr = CoInitializeEx (NULL, COINIT_MULTITHREADED);
+    hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
-    if (!SUCCEEDED (hr))
+    if (FAILED(hr))
     {
-        printf ("Coinit fails: x%X\n", hr);
-        exit (1);
+        printf("Coinit fails: x%X\n", hr);
+        exit(1);
     }
 
     // Get an interface to the device set.
     // Notice how we use a single IID for both the class and interface
     // identifiers.
     //
-    hr = CoCreateInstance ( 
-        CLSID_MSSQL_ClientVirtualDeviceSet,  
-	    NULL, 
-	    CLSCTX_INPROC_SERVER,
-	    IID_IClientVirtualDeviceSet2,
+    hr = CoCreateInstance(
+        CLSID_MSSQL_ClientVirtualDeviceSet,
+        nullptr,
+        CLSCTX_INPROC_SERVER,
+        IID_IClientVirtualDeviceSet2,
         (void**)&vds);
 
-    if (!SUCCEEDED (hr))
+    if (FAILED(hr))
     {
         // This failure might happen if the DLL was not registered,
-    	// or if the application is using the wrong interface id (IID).
+        // or if the application is using the wrong interface id (IID).
         //
-        printf ("Could not create component: x%X\n", hr);
-        printf ("Check registration of SQLVDI.DLL and value of IID\n");
+        printf("Could not create component: x%X\n", hr);
+        printf("Check registration of SQLVDI.DLL and value of IID\n");
         goto exit;
     }
 
@@ -159,118 +162,122 @@ main (int argc, char *argv[])
     // The server will treat the virtual device just like a pipe:
     // I/O will be strictly sequential with only the basic commands.
     //
-    memset (&config, 0, sizeof(config));
+    memset(&config, 0, sizeof(config));
     config.deviceCount = 1;
-	config.features = VDF_SnapshotPrepare;
+    config.features = VDF_SnapshotPrepare;
 
-	// Create a GUID to use for a unique virtual device name
-	//
-	GUID	vdsId;
-	WCHAR	wVdsName [50];
-	CoCreateGuid (&vdsId);
-	StringFromGUID2 (vdsId, wVdsName, 49);
+    // Create a GUID to use for a unique virtual device name
+    //
+    GUID     vdsId;
+    WCHAR    wVdsName[50];
+    CoCreateGuid(&vdsId);
+    StringFromGUID2(vdsId, wVdsName, 49);
 
     // Create the virtual device set
     // Notice that we only support unicode interfaces
-	//
-	WCHAR	wInstanceName [128];
-	int		rc = 0;
-	if (pInstanceName)
-	{
-		rc = MultiByteToWideChar (CP_ACP, 0, 
-			pInstanceName, strlen (pInstanceName),
-			wInstanceName, 127);
-	}
-	wInstanceName [rc] = 0;
+    //
 
-    hr = vds->CreateEx (wInstanceName, wVdsName, &config);
-    if (!SUCCEEDED (hr))
+    if (pInstanceName)
     {
-        printf ("VDS::Create fails: x%X", hr);
+        rc = MultiByteToWideChar(CP_ACP, 0,
+            pInstanceName, strlen(pInstanceName),
+            wInstanceName, 127);
+    }
+    wInstanceName[rc] = 0;
+
+    hr = vds->CreateEx(wInstanceName, wVdsName, &config);
+    if (FAILED(hr))
+    {
+        printf("VDS::Create fails: x%X", hr);
         goto exit;
     }
 
     // Send the SQL command, by starting a thread to handle the ODBC
     //
-	printf("\nSending the SQL...\n");
+    printf("\nSending the SQL...\n");
 
-	hThread = execSQL (doBackup, pInstanceName, pDbName, wVdsName);
-	if (hThread == NULL)
+    WCHAR wDbName[128];
+    MultiByteToWideChar(CP_ACP, 0,
+        pDbName, -1,
+        wDbName, 127);
+
+    hThread = execSQL(doBackup, wInstanceName, wDbName, wVdsName);
+    if (hThread == nullptr)
     {
-        printf ("execSQL failed.\n");
+        printf("execSQL failed.\n");
         goto shutdown;
     }
 
     // Wait for the server to connect, completing the configuration.
     //
-    printf ("\nWaiting for SQLServer to respond...\n");
+    printf("\nWaiting for SQLServer to respond...\n");
 
-    while (!SUCCEEDED (hr=vds->GetConfiguration (1000, &config)))
+    while (FAILED(hr = vds->GetConfiguration(1000, &config)))
     {
         if (hr == VD_E_TIMEOUT)
         {
-			// Check on the SQL thread
-			//
-			DWORD	rc = WaitForSingleObject (hThread, 1000);
-			if (rc == WAIT_OBJECT_0)
-			{
-				printf ("SQL command failed before VD transfer\n");
-				goto shutdown;
-			}
-			if (rc == WAIT_TIMEOUT)
-			{
-				continue;
-			}
-			printf ("Check on SQL failed: %d\n", rc);
-			goto shutdown;
-		}
-		
-        printf ("VDS::Getconfig fails: x%X\n", hr);
+            // Check on the SQL thread
+            //
+            DWORD rc = WaitForSingleObject(hThread, 1000);
+            if (rc == WAIT_OBJECT_0)
+            {
+                printf("SQL command failed before VD transfer\n");
+                goto shutdown;
+            }
+            if (rc == WAIT_TIMEOUT)
+            {
+                continue;
+            }
+            printf("Check on SQL failed: %d\n", rc);
+            goto shutdown;
+        }
+
+        printf("VDS::Getconfig fails: x%X\n", hr);
         goto shutdown;
     }
 
     // Open the single device in the set.
     //
-    hr = vds->OpenDevice (wVdsName, &vd);
-    if (!SUCCEEDED(hr))
+    hr = vds->OpenDevice(wVdsName, &vd);
+    if (FAILED(hr))
     {
-        printf ("VDS::OpenDevice fails: x%X\n", hr);
+        printf("VDS::OpenDevice fails: x%X\n", hr);
         goto shutdown;
     }
 
-    printf ("\nPerforming data transfer...\n");
-    
-    performTransfer (vds, vd, doBackup);
-    
-    
+    printf("\nPerforming data transfer...\n");
+
+    performTransfer(vds, vd, doBackup);
+
+
 shutdown:
 
     // Close the set
     //
-    vds->Close ();
+    vds->Close();
 
     // Obtain the SQL completion information
     //
-	if (hThread != NULL)
-	{
-	    if (checkSQL (hThread))
-			printf("\nThe SQL command executed successfully.\n");
-		else
-			printf("\nThe SQL command failed.\n");
+    if (hThread != nullptr)
+    {
+        if (checkSQL(hThread))
+            printf("\nThe SQL command executed successfully.\n");
+        else
+            printf("\nThe SQL command failed.\n");
 
-		CloseHandle (hThread);
-	}
+        CloseHandle(hThread);
+    }
 
     // COM reference counting: Release the interface.
     //
-    vds->Release () ;
+    vds->Release();
 
 exit:
     // Uninitialize COM Library
     //
-    CoUninitialize () ;
+    CoUninitialize();
 
-    return 0 ;
+    return 0;
 }
 
 //---------------------------------------------------------------------------
@@ -282,26 +289,26 @@ exit:
 // operations like RESTORE which can sometimes recover from
 // errors (error messages will be followed by the 3014 success message).
 //
-void ProcessMessages (
-	SQLSMALLINT		handle_type,    // ODBC handle type
-    SQLHANDLE		handle,         // ODBC handle
-    int				ConnInd,        // TRUE if sucessful connection made
-    int*            pBackupSuccess) // Set TRUE if a 3014 message is seen.
+void ProcessMessages(
+    SQLSMALLINT      handle_type,    // ODBC handle type
+    SQLHANDLE        handle,         // ODBC handle
+    bool             ConnInd,        // TRUE if sucessful connection made
+    bool*            pBackupSuccess) // Set TRUE if a 3014 message is seen.
 {
-    RETCODE			plm_retcode = SQL_SUCCESS;
-    UCHAR           plm_szSqlState[SQL_SQLSTATE_SIZE + 1];
-	UCHAR		    plm_szErrorMsg[SQL_MAX_MESSAGE_LENGTH + 1];
-    SDWORD          plm_pfNativeError = 0L;
-    SWORD           plm_pcbErrorMsg = 0;
-    SQLSMALLINT     plm_cRecNmbr = 1;
-    SDWORD          plm_SS_MsgState = 0, plm_SS_Severity = 0;
-    SQLINTEGER      plm_Rownumber = 0;
-    USHORT          plm_SS_Line;
-    SQLSMALLINT     plm_cbSS_Procname, plm_cbSS_Srvname;
-    SQLCHAR         plm_SS_Procname[MAXNAME], plm_SS_Srvname[MAXNAME];
+    RETCODE                plm_retcode = SQL_SUCCESS;
+    SQLWCHAR               plm_szSqlState[SQL_SQLSTATE_SIZE + 1];
+    SQLWCHAR               plm_szErrorMsg[SQL_MAX_MESSAGE_LENGTH + 1];
+    SDWORD                 plm_pfNativeError = 0L;
+    SWORD                  plm_pcbErrorMsg = 0;
+    SQLSMALLINT            plm_cRecNmbr = 1;
+    SDWORD                 plm_SS_MsgState = 0, plm_SS_Severity = 0;
+    SQLBIGINT              plm_Rownumber = 0;
+    USHORT                 plm_SS_Line;
+    SQLSMALLINT            plm_cbSS_Procname, plm_cbSS_Srvname;
+    SQLCHAR                plm_SS_Procname[MAXNAME], plm_SS_Srvname[MAXNAME];
 
-    while (plm_retcode != SQL_NO_DATA_FOUND) 
-	{
+    while (plm_retcode != SQL_NO_DATA_FOUND)
+    {
         plm_retcode = SQLGetDiagRec(handle_type, handle,
             plm_cRecNmbr, plm_szSqlState, &plm_pfNativeError,
             plm_szErrorMsg, SQL_MAX_MESSAGE_LENGTH, &plm_pcbErrorMsg);
@@ -312,10 +319,10 @@ void ProcessMessages (
         // Driver Manager and these calls to SQLGetDiagField
         // will fail.
         //
-        if (plm_retcode != SQL_NO_DATA_FOUND) 
-		{
-            if (ConnInd) 
-			{
+        if (plm_retcode != SQL_NO_DATA_FOUND)
+        {
+            if (ConnInd)
+            {
                 plm_retcode = SQLGetDiagField(
                     handle_type, handle, plm_cRecNmbr,
                     SQL_DIAG_ROW_NUMBER, &plm_Rownumber,
@@ -352,14 +359,14 @@ void ProcessMessages (
                     sizeof(plm_SS_Srvname),
                     &plm_cbSS_Srvname);
 
-                printf ("Msg %d, SevLevel %d, State %d, SQLState %s\n",
-                    plm_pfNativeError, 
+                printf_s("Msg %ld, SevLevel %ld, State %ld, SQLState %ls\n",
+                    plm_pfNativeError,
                     plm_SS_Severity,
                     plm_SS_MsgState,
                     plm_szSqlState);
             }
 
-            printf ("%s\n", plm_szErrorMsg);
+            printf("%ls\n", plm_szErrorMsg);
 
             if (pBackupSuccess && plm_pfNativeError == 3014)
             {
@@ -380,112 +387,101 @@ void ProcessMessages (
 //
 struct PARMS
 {
-	int		doBackup;
-	char*	pInstanceName;
-	char*	pDbName;
-	WCHAR*	pVdsName;
+    bool      doBackup;
+    WCHAR*    pInstanceName;
+    WCHAR*    pDbName;
+    WCHAR*    pVdsName;
 };
 
 unsigned __stdcall
-SQLRoutine (void* input)
+SQLRoutine(void* input)
 {
-	PARMS*		parms = (PARMS*)input;
+    PARMS* parms = (PARMS*)input;
 
-	SQLCHAR*    pSQLText;       // the command being executed.
-	int			successDetected = FALSE;
+    SQLWCHAR*   pSQLText;       // the command being executed.
+    bool        successDetected = false;
 
-	// ODBC handles
-	//
-	SQLHENV     henv = NULL;
-	SQLHDBC     hdbc = NULL;
-	SQLHSTMT    hstmt = NULL;
+    // ODBC handles
+    //
+    SQLHENV     henv = nullptr;
+    SQLHDBC     hdbc = nullptr;
+    SQLHSTMT    hstmt = nullptr;
 
-	char		sqlCommand [1024];
+    WCHAR       sqlCommand[1024];
+    SQLWCHAR    connectString[200] = { 0 };
 
-    int         sentSQL = FALSE;
+    bool        sentSQL = false;
     int         rc;
 
     #define     MAX_CONN_OUT 1024
-    SQLCHAR     szOutConn[MAX_CONN_OUT];
+    SQLWCHAR    szOutConn[MAX_CONN_OUT] = { 0 };
     SQLSMALLINT cbOutConn;
 
-	// Convert the VDSNAME for use by the non-unicode interfaces we're using here.
-	//
-	char	aVdsName [50];
-	int		aSize;
-    aSize = WideCharToMultiByte (
-		CP_ACP, 0,
-		parms->pVdsName,
-		-1,				// null terminated, so calculate
-		aVdsName, 49,
-    	NULL, NULL );	// don't worry about fancy conversions
 
-
-	// Generate the command to execute
-	//
-	sprintf (sqlCommand, "%s DATABASE [%s] %s VIRTUAL_DEVICE='%s' WITH SNAPSHOT",
-		parms->doBackup ? "BACKUP" : "RESTORE",
-		parms->pDbName,
-		parms->doBackup ? "TO" : "FROM",
-		aVdsName);
+    // Generate the command to execute
+    //
+    swprintf_s(sqlCommand, L"%ls DATABASE [%ls] %ls VIRTUAL_DEVICE='%ls' WITH SNAPSHOT",
+        parms->doBackup ? L"BACKUP" : L"RESTORE",
+        parms->pDbName,
+        parms->doBackup ? L"TO" : L"FROM",
+        parms->pVdsName);
 
     // Initialize the ODBC environment.
     //
-    if (SQLAllocHandle (SQL_HANDLE_ENV, NULL, &henv) == SQL_ERROR)
+    if (SQLAllocHandle(SQL_HANDLE_ENV, NULL, &henv) == SQL_ERROR)
         goto exit;
 
     // This is an ODBC v3 application
     //
-    SQLSetEnvAttr (henv, SQL_ATTR_ODBC_VERSION, (void*) SQL_OV_ODBC3, SQL_IS_INTEGER);
+    SQLSetEnvAttr(henv, SQL_ATTR_ODBC_VERSION, (void*)SQL_OV_ODBC3, SQL_IS_INTEGER);
 
     // Allocate a connection handle
     //
-    if (SQLAllocHandle (SQL_HANDLE_DBC, henv, &hdbc) == SQL_ERROR)
+    if (SQLAllocHandle(SQL_HANDLE_DBC, henv, &hdbc) == SQL_ERROR)
     {
-        printf ("AllocHandle on DBC failed.");
+        printf("AllocHandle on DBC failed.");
         goto exit;
     }
 
-	char connectString [200];
-	strcpy (connectString, "DRIVER={SQL Server};Trusted_Connection=yes;SERVER=.");
-	if (parms->pInstanceName)
-	{
-		sprintf (connectString+strlen(connectString), "\\%s", parms->pInstanceName);
-	}
+    wcscpy_s(connectString, 200, L"DRIVER={SQL Server};Trusted_Connection=yes;SERVER=.");
+    if (parms->pInstanceName)
+    {
+        swprintf_s(connectString + wcslen(connectString), 200 - wcslen(connectString), L"\\%ls", parms->pInstanceName);
+    }
 
-	printf ("\n\nConnecting with: %s\n", connectString);
+    printf("\n\nConnecting with: %ls\n", connectString);
 
     // Connect to the server using Trusted connection.
     // Trusted connection uses integrated NT security.
-	  // If you want to use mixed-mode Authentication, please set Trusted_Connection to no.
+      // If you want to use mixed-mode Authentication, please set Trusted_Connection to no.
     rc = SQLDriverConnect(
         hdbc,
-        NULL,   // no diaglogs please
-        (SQLCHAR*) connectString,
-        SQL_NTS, 
+        nullptr,   // no diaglogs please
+        connectString,
+        SQL_NTS,
         szOutConn,
-        MAX_CONN_OUT, 
-        &cbOutConn, 
+        MAX_CONN_OUT,
+        &cbOutConn,
         SQL_DRIVER_NOPROMPT);
 
     if (rc == SQL_ERROR)
     {
-        SQLCHAR     szSqlState[20];
-        SQLINTEGER  ssErr;
-        SQLCHAR     szErrorMsg [MAX_CONN_OUT];
-        SQLSMALLINT cbErrorMsg;
+        SQLWCHAR        szSqlState[20];
+        SQLINTEGER      ssErr;
+        SQLWCHAR        szErrorMsg[MAX_CONN_OUT];
+        SQLSMALLINT     cbErrorMsg;
 
-        printf ("Connect fails\n");
+        printf("Connect fails\n");
 
-        rc = SQLError (
-            henv, hdbc, SQL_NULL_HSTMT, 
-            szSqlState, 
-            &ssErr, 
-            szErrorMsg, 
-            MAX_CONN_OUT, 
+        rc = SQLError(
+            henv, hdbc, SQL_NULL_HSTMT,
+            szSqlState,
+            &ssErr,
+            szErrorMsg,
+            MAX_CONN_OUT,
             &cbErrorMsg);
 
-        printf ("msg=%s\n", szErrorMsg);
+        printf("msg=%ls\n", szErrorMsg);
 
         goto exit;
     }
@@ -494,91 +490,91 @@ SQLRoutine (void* input)
     //
     if (SQLAllocHandle(SQL_HANDLE_STMT, hdbc, &hstmt) == SQL_ERROR)
     {
-        printf ("Failed to get statement handle\n");
+        printf("Failed to get statement handle\n");
 
-        ProcessMessages (SQL_HANDLE_DBC, hdbc, TRUE, NULL);
+        ProcessMessages(SQL_HANDLE_DBC, hdbc, true, nullptr);
         goto exit;
     }
 
     // Execute the SQL
     //
-	printf ("\n\nExecuting SQL: %s\n", sqlCommand);
+    printf("\n\nExecuting SQL: %ls\n", sqlCommand);
 
-    pSQLText = (SQLCHAR*)sqlCommand;
+    pSQLText = sqlCommand;
 
-    rc = SQLExecDirect (hstmt, pSQLText, SQL_NTS);
+    rc = SQLExecDirect(hstmt, pSQLText, SQL_NTS);
 
-	// Extract all the resulting messages
-	//
+    // Extract all the resulting messages
+    //
 
-	SQLSMALLINT numResultCols;
-	while (1)
-	{
-		switch (rc)
-		{
-			case SQL_ERROR:
-				successDetected = FALSE;
-				ProcessMessages (SQL_HANDLE_STMT, hstmt, TRUE, &successDetected);
-				if (!successDetected)
-				{
-					printf ("Errors resulted in failure of the command\n");
-					goto exit;
-				}
-				printf ("Errors were encountered but the command was able to recover and successfully complete.\n");
-				break;
-
-			case SQL_SUCCESS_WITH_INFO:
-				ProcessMessages (SQL_HANDLE_STMT, hstmt, TRUE, NULL);
-				// fall through
-
-			case SQL_SUCCESS:
-				successDetected = TRUE;
-
-				numResultCols = 0;
-				SQLNumResultCols (hstmt, &numResultCols);
-				if (numResultCols > 0)
-				{
-					printf ("A result set with %d columns was produced\n", 
-						(int)numResultCols);
-				}
-				break;
-
-			case SQL_NO_DATA:
-				// All results have been processed.  We are done.
-				//
-				goto exit;
-
-			case SQL_NEED_DATA:
-			case SQL_INVALID_HANDLE:
-			case SQL_STILL_EXECUTING:
-			default:
-				successDetected = FALSE;
-				printf ("Unexpected SQLExec result %d\n", rc);
-				goto exit;
-		}
-		rc = SQLMoreResults (hstmt);
-	}
-
-exit:
-	// Release the ODBC resources.
-	//
-    if (hstmt != NULL)
+    SQLSMALLINT numResultCols;
+    while (1)
     {
-        SQLFreeHandle(SQL_HANDLE_STMT, hstmt);
-        hstmt = NULL;
+        switch (rc)
+        {
+        case SQL_ERROR:
+            successDetected = false;
+            ProcessMessages(SQL_HANDLE_STMT, hstmt, true, &successDetected);
+            if (!successDetected)
+            {
+                printf("Errors resulted in failure of the command\n");
+                goto exit;
+            }
+            printf("Errors were encountered but the command was able to recover and successfully complete.\n");
+            break;
+
+        case SQL_SUCCESS_WITH_INFO:
+            ProcessMessages(SQL_HANDLE_STMT, hstmt, TRUE, NULL);
+            // fall through
+
+        case SQL_SUCCESS:
+            successDetected = true;
+
+            numResultCols = 0;
+            SQLNumResultCols(hstmt, &numResultCols);
+            if (numResultCols > 0)
+            {
+                printf("A result set with %d columns was produced\n",
+                    (int)numResultCols);
+            }
+            break;
+
+        case SQL_NO_DATA:
+            // All results have been processed.  We are done.
+            //
+            goto exit;
+
+        case SQL_NEED_DATA:
+        case SQL_INVALID_HANDLE:
+        case SQL_STILL_EXECUTING:
+        default:
+            successDetected = false;
+            printf("Unexpected SQLExec result %d\n", rc);
+            goto exit;
+        }
+        rc = SQLMoreResults(hstmt);
     }
 
-    if (hdbc != NULL)
+exit:
+    // Release the ODBC resources.
+    //
+    if (hstmt != nullptr)
+    {
+        SQLFreeHandle(SQL_HANDLE_STMT, hstmt);
+        hstmt = nullptr;
+    }
+
+    if (hdbc != nullptr)
     {
         SQLDisconnect(hdbc);
         SQLFreeHandle(SQL_HANDLE_DBC, hdbc);
-        hdbc = NULL;
+        hdbc = nullptr;
     }
 
-    if (henv != NULL)
+    if (henv != nullptr)
     {
         SQLFreeHandle(SQL_HANDLE_ENV, henv);
-        henv = NULL;
+        henv = nullptr;
     }
 
     return successDetected;
@@ -591,48 +587,48 @@ exit:
 //
 // Return the thread handle (NULL on error).
 //
-HANDLE execSQL (int doBackup, char* pInstanceName, char* pDbName, WCHAR* pVDName)
+HANDLE execSQL(bool doBackup, WCHAR* pInstanceName, WCHAR* pDbName, WCHAR* pVDName)
 {
-	unsigned int	threadId;
-	HANDLE			hThread;
-	static PARMS	parms; // yucky, but only a single command is used....
+    unsigned int    threadId;
+    HANDLE          hThread;
+    static PARMS    parms; // yucky, but only a single command is used....
 
-	parms.doBackup = doBackup;
-	parms.pDbName = pDbName;
-	parms.pInstanceName = pInstanceName;
-	parms.pVdsName = pVDName;
+    parms.doBackup = doBackup;
+    parms.pDbName = pDbName;
+    parms.pInstanceName = pInstanceName;
+    parms.pVdsName = pVDName;
 
-	hThread = (HANDLE)_beginthreadex (
-            NULL, 0, SQLRoutine, (void*)&parms, 0, &threadId);
-	if (hThread == NULL)
-	{
-		printf ("Failed to create thread. errno is %d\n", errno);
-	}
-	return hThread;
+    hThread = (HANDLE)_beginthreadex(
+        nullptr, 0, SQLRoutine, (void*)&parms, 0, &threadId);
+    if (hThread == nullptr)
+    {
+        printf("Failed to create thread. errno is %d\n", errno);
+    }
+    return hThread;
 }
 
 //------------------------------------------------------------
 //
 // checkSQL: Wait for the T-SQL to complete, 
-//	returns TRUE if statement successfully executed.
+//    returns TRUE if statement successfully executed.
 //
-int checkSQL (HANDLE hThread)
+bool checkSQL(HANDLE hThread)
 {
-	if (hThread == NULL)
-		return FALSE;
+    if (hThread == nullptr)
+        return false;
 
-	DWORD	rc = WaitForSingleObject (hThread, INFINITE);
-	if (rc != WAIT_OBJECT_0)
-	{
-		printf ("checkSQL failed: %d\n", rc);
-		return FALSE;
-	}
-	if (!GetExitCodeThread (hThread, &rc))
-	{
-		printf ("failed to get exit code: %d\n", GetLastError ());
-		return FALSE;
-	}
-	return rc == TRUE;
+    DWORD    rc = WaitForSingleObject(hThread, INFINITE);
+    if (rc != WAIT_OBJECT_0)
+    {
+        printf("checkSQL failed: %d\n", rc);
+        return false;
+    }
+    if (!GetExitCodeThread(hThread, &rc))
+    {
+        printf("failed to get exit code: %d\n", GetLastError());
+        return false;
+    }
+    return rc == true;
 }
 
 
@@ -640,16 +636,20 @@ int checkSQL (HANDLE hThread)
 // Ask the user a "yes/no" question.
 // Return TRUE if he answers "yes"
 //
-BOOL
-ynPrompt (char *str)
+bool ynPrompt(const char* str)
 {
     char line[256];
 
-    printf ("\n\n%s", str);
-    line [0] = 0;
-    gets (line);
-    printf ("\n\n");
-    return (line [0] == 'y' || line [0] == 'Y');
+    printf("\n\n%s\n", str);
+    fgets(line, sizeof(line), stdin);
+
+    // Remove newline character if fgets reads in a newline.
+    size_t len = strlen(line);
+    if (len > 0 && line[len - 1] == '\n') {
+        line[len - 1] = '\0';
+    }
+
+    return (line[0] == 'y' || line[0] == 'Y');
 }
 
 //----------------------------------------------------------------------------------
@@ -658,156 +658,156 @@ ynPrompt (char *str)
 // This routine reads commands from the server until a 'Close' status is received.
 // It simply reads or writes a file 'superbak.dmp' in the current directory.
 //
-void performTransfer (
-    IClientVirtualDeviceSet2* iVds,
-    IClientVirtualDevice*   vd,
-    int                     backup )
+void performTransfer(
+    IClientVirtualDeviceSet2*    iVds,
+    IClientVirtualDevice*        vd,
+    int                          backup)
 {
-    FILE *          fh;
-    char*           fname = "snapshot.dmp";
-    VDC_Command *   cmd;
+    FILE*           fh;
+    char*           fname = (char*)"snapshot.dmp";
+    VDC_Command*    cmd;
     DWORD           completionCode;
     DWORD           bytesTransferred;
     HRESULT         hr;
 
-    fh = fopen (fname, (backup)? "wb" : "rb");
-    if (fh == NULL )
+    errno_t error = fopen_s(&fh, fname, (backup) ? "wb" : "rb");
+    if (error != 0)
     {
-        printf ("Failed to open: %s\n", fname);
+        printf("Failed to open: %s\n", fname);
         return;
     }
 
-    while (SUCCEEDED (hr=vd->GetCommand (INFINITE, &cmd)))
+    while (SUCCEEDED(hr = vd->GetCommand(INFINITE, &cmd)))
     {
         bytesTransferred = 0;
         switch (cmd->commandCode)
         {
-            case VDC_Read:
-                bytesTransferred = fread (cmd->buffer, 1, cmd->size, fh);
-                if (bytesTransferred == cmd->size)
-                    completionCode = ERROR_SUCCESS;
-                else
-                    // assume failure is eof
-                    completionCode = ERROR_HANDLE_EOF;
-                break;
+        case VDC_Read:
+            bytesTransferred = fread(cmd->buffer, 1, cmd->size, fh);
+            if (bytesTransferred == cmd->size)
+                completionCode = ERROR_SUCCESS;
+            else
+                // assume failure is eof
+                completionCode = ERROR_HANDLE_EOF;
+            break;
 
-            case VDC_Write:
-                bytesTransferred = fwrite (cmd->buffer, 1, cmd->size, fh);
-                if (bytesTransferred == cmd->size )
+        case VDC_Write:
+            bytesTransferred = fwrite(cmd->buffer, 1, cmd->size, fh);
+            if (bytesTransferred == cmd->size)
+            {
+                completionCode = ERROR_SUCCESS;
+            }
+            else
+                // assume failure is disk full
+                completionCode = ERROR_DISK_FULL;
+            break;
+
+        case VDC_Flush:
+            fflush(fh);
+            completionCode = ERROR_SUCCESS;
+            break;
+
+        case VDC_ClearError:
+            completionCode = ERROR_SUCCESS;
+            break;
+
+        case VDC_PrepareToFreeze:
+            printf("\n*** SQL Server is prepared to freeze the database now ***\n");
+            printf("At this point the application can perform any final coordination activities.\n");
+
+            while (!ynPrompt("Are you ready to freeze the database?"))
+            {
+                if (ynPrompt("Do you want to abort?"))
                 {
-                    completionCode = ERROR_SUCCESS;
+                    iVds->SignalAbort();
+                    return;
                 }
-                else
-                    // assume failure is disk full
-                    completionCode = ERROR_DISK_FULL;
-                break;
+            }
+            // Acknowledging this command results in a freeze of database writes.
+            // The server will then issue VDC_Write commands to record metadata
+            // about the frozen state.
+            // Then the VDC_Snapshot is issued.
+            //
+            completionCode = ERROR_SUCCESS;
+            break;
 
-            case VDC_Flush:
-                fflush (fh);
-                completionCode = ERROR_SUCCESS;
-                break;
-    
-            case VDC_ClearError:
-                completionCode = ERROR_SUCCESS;
-                break;
+        case VDC_Snapshot:
+            // At this point the metadata is complete, so the
+            // output stream can be closed.  Thus it is possible
+            // to include the metadata with the data of the snapshot.
+            //
+            fclose(fh);
+            fh = nullptr;
 
-			case VDC_PrepareToFreeze:
-				printf ("\n*** SQL Server is prepared to freeze the database now ***\n");
-				printf ("At this point the application can perform any final coordination activities.\n");
+            printf("\n*** Make the snapshot now ***\n");
 
-				while (!ynPrompt ("Are you ready to freeze the database?"))
-				{
-					if (ynPrompt ("Do you want to abort?"))
-					{
-						iVds->SignalAbort ();
-						return;
-					}
-				}
-				// Acknowledging this command results in a freeze of database writes.
-				// The server will then issue VDC_Write commands to record metadata
-				// about the frozen state.
-				// Then the VDC_Snapshot is issued.
-				//
-				completionCode = ERROR_SUCCESS;
-				break;
+            while (!ynPrompt("Did you complete the snapshot?"))
+            {
+                if (ynPrompt("Do you want to abort?"))
+                {
+                    iVds->SignalAbort();
+                    return;
+                }
+            }
 
-			case VDC_Snapshot:
-				// At this point the metadata is complete, so the
-				// output stream can be closed.  Thus it is possible
-				// to include the metadata with the data of the snapshot.
-				//
-				fclose (fh);
-				fh = NULL;
+            // For clarity, we "unroll" the loop logic
+            // in the following block of code so you can
+            // easily see the sequence of operations.
+            //
 
-				printf ("\n*** Make the snapshot now ***\n");
+            // Tell SQLServer that the snapshot is done.
+            //
+            completionCode = ERROR_SUCCESS;
+            hr = vd->CompleteCommand(cmd, completionCode, bytesTransferred, 0);
+            if (FAILED(hr))
+            {
+                printf("Completion Failed: x%X\n", hr);
+                return;
+            }
 
-				while (!ynPrompt ("Did you complete the snapshot?"))
-				{
-					if (ynPrompt ("Do you want to abort?"))
-					{
-						iVds->SignalAbort ();
-						return;
-					}
-				}
+            // The only valid command will be a "close" request.
+            //
+            hr = vd->GetCommand(INFINITE, &cmd);
+            if (hr != VD_E_CLOSE)
+            {
+                printf("Unexpected snapshot termination: x%X\n", hr);
+            }
+            else
+            {
+                printf("SQLServer is aware that the snapshot is successful.\n");
+            }
+            return;
 
-				// For clarity, we "unroll" the loop logic
-				// in the following block of code so you can
-				// easily see the sequence of operations.
-				//
+        case VDC_MountSnapshot:
+            printf("\n*** Mount the snapshot now ***\n");
 
-				// Tell SQLServer that the snapshot is done.
-				//
-				completionCode = ERROR_SUCCESS;
-				hr = vd->CompleteCommand (cmd, completionCode, bytesTransferred, 0);
-				if (!SUCCEEDED (hr))
-				{
-					printf ("Completion Failed: x%X\n", hr);
-					return;
-				}
+            while (!ynPrompt("Did you complete the snapshot?"))
+            {
+                if (ynPrompt("Do you want to abort?"))
+                {
+                    iVds->SignalAbort();
+                    return;
+                }
+            }
+            completionCode = ERROR_SUCCESS;
+            break;
 
-				// The only valid command will be a "close" request.
-				//
-				hr = vd->GetCommand (INFINITE, &cmd);
-				if (hr != VD_E_CLOSE)
-				{
-			        printf ("Unexpected snapshot termination: x%X\n", hr);
-				}
-				else
-				{
-					printf ("SQLServer is aware that the snapshot is successful.\n");
-				}
-				return;
-
-			case VDC_MountSnapshot:
-				printf ("\n*** Mount the snapshot now ***\n");
-
-				while (!ynPrompt ("Did you complete the snapshot?"))
-				{
-					if (ynPrompt ("Do you want to abort?"))
-					{
-						iVds->SignalAbort ();
-						return;
-					}
-				}
-				completionCode = ERROR_SUCCESS;
-				break;
-
-            default:
-                // If command is unknown...
-                completionCode = ERROR_NOT_SUPPORTED;
+        default:
+            // If command is unknown...
+            completionCode = ERROR_NOT_SUPPORTED;
         }
 
-        hr = vd->CompleteCommand (cmd, completionCode, bytesTransferred, 0);
-        if (!SUCCEEDED (hr))
+        hr = vd->CompleteCommand(cmd, completionCode, bytesTransferred, 0);
+        if (FAILED(hr))
         {
-            printf ("Completion Failed: x%X\n", hr);
+            printf("Completion Failed: x%X\n", hr);
             break;
         }
     }
 
     if (hr != VD_E_CLOSE)
     {
-        printf ("Unexpected termination: x%X\n", hr);
+        printf("Unexpected termination: x%X\n", hr);
     }
     else
     {
@@ -816,13 +816,13 @@ void performTransfer (
         // must determine if the backup/restore was
         // really successful.
         //
-        printf ("Successfully completed data transfer.\n");
+        printf("Successfully completed data transfer.\n");
     }
 
-	if (fh != NULL)
-	{
-	    fclose (fh);
-	}
+    if (fh != nullptr)
+    {
+        fclose(fh);
+    }
 }
 
 
