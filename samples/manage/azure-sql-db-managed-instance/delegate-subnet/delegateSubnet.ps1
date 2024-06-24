@@ -17,7 +17,7 @@ function VerifyPSVersion {
             Write-Host "PowerShell version verified." -ForegroundColor Green
         }
         else {
-            Write-Host "You need to install PowerShell version 5.1 or heigher." -ForegroundColor Red
+            Write-Host "You need to install PowerShell version 5.1 or higher." -ForegroundColor Red
             Break;
         }
     }
@@ -26,7 +26,7 @@ function VerifyPSVersion {
             Write-Host "PowerShell version verified." -ForegroundColor Green
         }
         else {
-            Write-Host "You need to install PowerShell version 6.0 or heigher." -ForegroundColor Red
+            Write-Host "You need to install PowerShell version 6.0 or higher." -ForegroundColor Red
             Break;
         }
     }
