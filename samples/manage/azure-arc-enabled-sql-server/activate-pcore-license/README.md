@@ -45,7 +45,7 @@ curl https://raw.githubusercontent.com/microsoft/sql-server-samples/master/sampl
     * set the start time
     * set *Recurrance* to Once
     * click **Create**
-1. In a separate browser window, open the Azure resource of your inactive licence, go to the *Settings* group, select *Properties* and copy the license ID (URI) to te clipboard.
+1. In a separate browser window, open the Azure resource of your inactive licence, go to the *Settings* group, select *Properties* and copy the license ID (URI) to the clipboard.
 1. Go back to *Schedule runbook page*, click on *Parameters and run settings* and paste the license ID value you copied to the clipboard.
 1. Click **OK** to link to the schedule and **OK** again to create the job.
 1. On the runbook Overview page, click to open a recent job that was completed right after the specified start time.
