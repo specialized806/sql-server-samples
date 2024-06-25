@@ -29,13 +29,26 @@ You can scahedule to run the the command as a runbook. To set it up using Azure 
 ```console
 curl https://raw.githubusercontent.com/microsoft/sql-server-samples/master/samples/manage/azure-arc-enabled-sql-server/activate-pcore-license/activate-pcore-license.md -o activate-pcore-license.ps1
 ```
-2. [Create a new automation account](https://ms.portal.azure.com/#create/Microsoft.AutomationAccount)  or open an existing one.
-1. Select *Run as accounts* in the **Account Settings** group, open the automatically created *Azure Run As Account* and note or copy the Display Name property. 
-1. Select *Runbooks* in the **Process automation** group and click on *Import a runbook*, select the file you downloaded in Step 1 and click **Create**.
+1. [Create a new automation account](https://ms.portal.azure.com/#create/Microsoft.AutomationAccount)  or open an existing one. In the Advanced section, make sure that *System assigned identity* is selecetd.
+1. In the **Process automation** group select **Runbooks**
+1. Click on the *Import a runbook* tab and configure it:
+    * select the file you downloaded in Step 1  
+    * type in a name of the runbook
+    * select the typr as PowerShell 
+    * select the runtime version 5.1 
+    * click **Import**.
 1. When import is completed, click the *Publish* button.
-1. From the runbook blade, click on the *Link to schedule* button and select an existing schedule or create a new one withand spesify the designed launch time.
-1. Click on *Parameters and run settings* and specify the following parameters:
-    - LICENSEID. Put in teh resourec URI
+1. Once the status changes to *Published* on the runbook blade, click on the *Link to schedule* button 
+1. Select *Link a schedule to your runbook* and click *+ Add a schedule*  
+1. Configure the schedule: 
+    * type in the name of the schedule
+    * set the start time
+    * set *Recurrance* to Once
+    * click **Create**
+1. In a separate browser window, open the Azure resource of your inactive licence, go to the *Settings* group, select *Properties* and copy the license ID (URI) to te clipboard.
+1. Go back to *Schedule runbook page*, click on *Parameters and run settings* and paste the license ID value you copied to the clipboard.
 1. Click **OK** to link to the schedule and **OK** again to create the job.
+1. On the runbook Overview page, click to open a recent job that was completed right after the specified start time.
+1. Click on the *Output* tab and notice the `Properties.activationState=Activated`. Your license is now active.
 
 For more information about the runbooks, see the [Runbook tutorial](https://docs.microsoft.com/en-us/azure/automation/learn/automation-tutorial-runbook-textual-powershell)
