@@ -34,7 +34,7 @@ curl https://raw.githubusercontent.com/microsoft/sql-server-samples/master/sampl
 1. Click on the *Import a runbook* tab and configure it:
     * select the file you downloaded in Step 1  
     * type in a name of the runbook
-    * select the typr as PowerShell 
+    * select the type as PowerShell 
     * select the runtime version 5.1 
     * click **Import**.
 1. When import is completed, click the *Publish* button.
