@@ -1,4 +1,4 @@
-<#
+.<#
     .DESCRIPTION
         This runbook activates a SQL Server license using the Managed Identity
         The runbook accepts the following parameters:
@@ -12,7 +12,7 @@
 
 param (
     [Parameter (Mandatory= $true)]
-    [string] $LicenseId,
+    [string] $LicenseId
 )
 
 #
