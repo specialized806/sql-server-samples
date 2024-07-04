@@ -14,13 +14,9 @@ param (
     [Parameter (Mandatory=$true)]
     [string]$SqlServerSvcPassword,
     [Parameter (Mandatory=$true)]
-    [string]$SqlServerVersion,
-    [Parameter (Mandatory=$true)]
     [string]$SqlServerEdition,
     [Parameter (Mandatory=$true)]
-    [string]$SqlServerProductKey,
-    [Parameter (Mandatory=$true)]
-    [string]$isoURL
+    [string]$isoFolder
 )
 
 # This function checks if the specified module is imported into the session and if not installes and/or imports it
@@ -125,24 +121,38 @@ try {
 
     New-AzConnectedMachine -ResourceGroupName $AzureResourceGroupUri -Name $hostName -Location $AzureRegion
 
-    # Step 4: Automatically download installable media
+    # Step 4: Retrieve the product key
  
-    $isoLocation = "C:\download\SQLServer.iso"
-    if (!(Test-Path -Path $isoLocation)) { 
-        $freeSpace = (Get-PSDrive -Name C).Free
-        $isoSize = (Invoke-WebRequest -Uri $isoURL -Method Head).Headers.'Content-Length'
-        if ($freeSpace -gt $isoSize) {
-             Start-BitsTransfer -Source $isoURL -Destination $isoLocation
-        } else {
-             throw "Not enough free space to download the ISO."
-        }
+    $keyFiles = Get-ChildItem $isoFolder -Filter "*.txt"
+
+    foreach ($keyFile in $keyFiles) {
+        # Read each line from the file
+        Get-Content $keyFile | ForEach-Object {
+            if ($_ -match "(?i)$($SqlServerEdition)" -and $_ -match "[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}.*") {
+                # Extract the product key (including any following string after a space)
+                $productKey = [regex]::Match($_, '[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}.*').Value
+                # Strip any text after the product key
+                $productKey = $productKey -replace " .*$"
+                Write-Host "Found product key in $($keyFile.Name): $productKey"
+            }
+        }    
     }
 
     # Step 5: Mount the ISO file as a volume
-    $volumeInfo = Mount-DiskImage -ImagePath $isoLocation -PassThru | Get-Volume
+    $isoFiles = Get-ChildItem $isoFolder -Filter "*.iso"
+
+    foreach ($isoFile in $isoFiles) {
+        # Mount the ISO file
+        $mountResult = Mount-DiskImage -ImagePath $isoFile.FullName
+        $driveLetter = ($mountResult | Get-Volume).DriveLetter
+        $mountedIsoFile = $isoFile
+        Write-Host "ISO file $($isoFile.Name) mounted as drive $driveLetter"
+        break
+    }
+
     
     # Step 6: Run unattended SQL Server setup from the mounted volume
-    $setupPath = ($volumeInfo.DriveLetter + ":\setup.exe")
+    $setupPath = ($driveLetter + ":\setup.exe")
     $argumentList = "
         /q 
         /ACTION=Install 
@@ -154,7 +164,7 @@ try {
         /AGTSVCACCOUNT='$($SqlServerSvcAccount)' 
         /AGTSVCPASSWORD='$($SqlServerSvcPassword)' 
         /IACCEPTSQLSERVERLICENSETERMS 
-        /PID='$($SqlServerProductKey)' 
+        /PID='$($productKey)' 
         /Edition='$($SqlServerEdition)'
     "
     if ($SqlServerInstanceName) {
@@ -172,13 +182,10 @@ try {
     }
     New-AzConnectedMachineExtension -ResourceGroupName $AzureResourceGroupUri -MachineName $hostName -Name "WindowsAgent.SqlServer" -Publisher "Microsoft.AzureData" -Type "WindowsAgent.SqlServer" -TypeHandlerVersion "1.0" -Settings $settings
 
-    # Step 9: Dismount the ISO file after installation
-    Dismount-DiskImage -ImagePath $isoLocation
+    # Step 8: Dismount the ISO file after installation
+    Dismount-DiskImage -ImagePath $isoFolder + $mountedIsoFile
 
-    # Step 10: Remove the media from the local file system
-    Remove-Item -Path $isoLocation
-
-    # Step 8: Display the status of the Azure resource for Arc-enabled SQL Server    
+    # Step 9: Display the status of the Azure resource for Arc-enabled SQL Server    
     $query = "
     resources
     | where type =~ 'microsoft.hybridcompute/machines' 
