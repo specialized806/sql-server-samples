@@ -579,6 +579,7 @@ Function MigrateCatalogItem(srcItem As CatalogItem) As CatalogItem
 			For Each w As Warning In warnings
 				If w.Code <> "rsDataSourceReferenceNotPublished" And w.Code <> "rsDataSetReferenceNotPublished" Then	'This should be fine after re-linking
 					Console.WriteLine("Warning: " + w.Message)
+					LogErrorToFile("CATALOGITEM", "Warning: " + srcItem.Path, w.Message)
 				End If
 			Next
 			Console.ResetColor()
