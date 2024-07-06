@@ -128,8 +128,12 @@ try {
 
     foreach ($isoFile in $isoFiles) {
         # Mount the ISO file
-	$imagePath = $isoFile.FullName
-        $mountResult = Mount-DiskImage -ImagePath $imagePath 
+	    $imagePath = $isoFile.FullName
+        if (!(Get-DiskImage -ImagePath $imagePath).Attached) {
+            $mountResult = Mount-DiskImage -ImagePath $imagePath 
+        } else {
+            $mountResult = Get-DiskImage -ImagePath $imagePath 
+        }
         $driveLetter = ($mountResult | Get-Volume).DriveLetter
         Write-Host "ISO file $($isoFile.Name) mounted as drive $($driveLetter):"
         break
@@ -186,9 +190,9 @@ try {
     $hostName = (Get-WmiObject Win32_ComputerSystem).Name
 
     if ($Proxy) {
-	Connect-AzConnectedMachine -ResourceGroupName $AzureResourceGroup -Name $hostName -Location $AzureRegion -Proxi $Proxy | Out-Null
+	    Connect-AzConnectedMachine -ResourceGroupName $AzureResourceGroup -Name $hostName -Location $AzureRegion -Proxi $Proxy | Out-Null
     } else {
-	Connect-AzConnectedMachine -ResourceGroupName $AzureResourceGroup -Name $hostName -Location $AzureRegion | Out-Null
+	    Connect-AzConnectedMachine -ResourceGroupName $AzureResourceGroup -Name $hostName -Location $AzureRegion | Out-Null
     }
     
     write-host "==== Install SQL Arc extension with LT=PAYG and upgrade to the latest version ===="
