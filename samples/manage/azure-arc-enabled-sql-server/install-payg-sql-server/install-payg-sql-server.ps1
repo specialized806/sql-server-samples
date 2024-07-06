@@ -163,17 +163,16 @@ try {
     $setupPath = ($driveLetter + ":\setup.exe")
     $argumentList = "
         /q 
-        /ACTION=Install 
+        /ACTION=`"Install`" 
         /FEATURES=SQL 
         /INSTANCEDIR=C:\SQL 
-        /SQLSYSADMINACCOUNTS='$($SqlServerAdminAccounts)' 
-        /SQLSVCACCOUNT='$($SqlServerSvcAccount)' 
-        /SQLSVCPASSWORD='$($SqlServerSvcPassword)' 
-        /AGTSVCACCOUNT='$($SqlServerSvcAccount)' 
-        /AGTSVCPASSWORD='$($SqlServerSvcPassword)' 
+        /SQLSYSADMINACCOUNTS=`"$($SqlServerAdminAccounts)`" 
+        /SQLSVCACCOUNT=`"$($SqlServerSvcAccount)`" 
+        /SQLSVCPASSWORD=`"$($SqlServerSvcPassword)`" 
+        /AGTSVCACCOUNT=`"$($SqlServerSvcAccount)`" 
+        /AGTSVCPASSWORD=`"$($SqlServerSvcPassword)`" 
         /IACCEPTSQLSERVERLICENSETERMS 
-        /PID='$($productKey)' 
-        /Edition='$($SqlServerEdition)'
+        /PID=`"$($productKey)`" 
     "
     if ($SqlServerInstanceName) {
         $argumentList += "/INSTANCENAME='$($SqlServerInstanceName)'"
