@@ -16,8 +16,6 @@ param (
     [Parameter (Mandatory=$false)]
     [string]$AgtServerSvcAccount = "NT AUTHORITY\NETWORK SERVICE",
     [Parameter (Mandatory=$true)]
-    [string]$AgtServerEdition,
-    [Parameter (Mandatory=$true)]
     [string]$IsoFolder,
     [Parameter (Mandatory=$false)]
     [string]$Proxy
@@ -195,7 +193,7 @@ try {
         $argumentList += "    /PID=`"$($productKey)`"
     " 
     }  
-    $argumentList
+
     Start-Process -FilePath $setupPath -ArgumentList $argumentList
     
     write-host "==== Dismount the ISO file after installation ===="
