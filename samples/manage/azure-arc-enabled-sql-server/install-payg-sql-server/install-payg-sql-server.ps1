@@ -88,6 +88,7 @@ try {
     $requiredModules = @(
         "AzureAD",    
         "Az.Accounts",
+        "Az.Resources",
         "Az.ConnectedMachine",
         "Az.ResourceGraph"
     )
