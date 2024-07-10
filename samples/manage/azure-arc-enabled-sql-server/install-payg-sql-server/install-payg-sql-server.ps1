@@ -7,14 +7,16 @@ param (
     [string]$AzureRegion,
     [Parameter (Mandatory=$false)]
     [string]$SqlServerInstanceName,
-    [Parameter (Mandatory=$true)]
-    [string]$SqlServerAdminAccounts,
-    [Parameter (Mandatory=$true)]
-    [string]$SqlServerSvcAccount,
-    [Parameter (Mandatory=$true)]
+    [Parameter (Mandatory=$false)]
+    [string]$SqlServerAdminAccounts = "BUILTIN\ADMINISTRATORS",
+    [Parameter (Mandatory=$false)]
+    [string]$SqlServerSvcAccount = "NT AUTHORITY\SYSTEM",
+    [Parameter (Mandatory=$false)]
     [string]$SqlServerSvcPassword,
+    [Parameter (Mandatory=$false)]
+    [string]$AgtServerSvcAccount = "NT AUTHORITY\NETWORK SERVICE",
     [Parameter (Mandatory=$true)]
-    [string]$SqlServerEdition,
+    [string]$AgtServerEdition,
     [Parameter (Mandatory=$true)]
     [string]$IsoFolder,
     [Parameter (Mandatory=$false)]
@@ -124,11 +126,31 @@ try {
 
     write-host "==== Mount the ISO file as a volume ===="
 
+     # Retrieve the product key if any
+ 
+    $keyFiles = Get-ChildItem $IsoFolder -Filter "*.txt"
+    
+    foreach ($keyFile in $keyFiles) {
+        # Read each line from the file
+        Get-Content $keyFile | ForEach-Object {
+            if ($_ -match "(?i)$($SqlServerEdition)" -and $_ -match "[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}.*") {
+                # Extract the product key (including any following string after a space)
+                $productKey = [regex]::Match($_, '[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}.*').Value
+                # Strip any text after the product key
+                $productKey = $productKey -replace " .*$"
+            }
+        }    
+    }
+    
     $isoFiles = Get-ChildItem $IsoFolder -Filter "*.iso"
 
+   # Pick the .iso file and mount
+
+    $noKeylist = "SQLFULL_ENU_ENTVL", "SQLFULL_ENU_STDVL", "SQLServer2022-x64-ENU-Ent", "SQLServer2022-x64-ENU-Std"
+
     foreach ($isoFile in $isoFiles) {
-        # Mount the ISO file
-	    $imagePath = $isoFile.FullName
+        $imagePath = $isoFile.FullName
+        if ($noKeylist -contains $isoFile.Name) {$productKey = ""}
         if (!(Get-DiskImage -ImagePath $imagePath).Attached) {
             $mountResult = Mount-DiskImage -ImagePath $imagePath 
         } else {
@@ -142,21 +164,7 @@ try {
     
     write-host "==== Run unattended SQL Server setup from the mounted volume ===="
 
-    # Retrieve the product key
- 
-    $keyFiles = Get-ChildItem $IsoFolder -Filter "*.txt"
-
-    foreach ($keyFile in $keyFiles) {
-        # Read each line from the file
-        Get-Content $keyFile | ForEach-Object {
-            if ($_ -match "(?i)$($SqlServerEdition)" -and $_ -match "[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}.*") {
-                # Extract the product key (including any following string after a space)
-                $productKey = [regex]::Match($_, '[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}.*').Value
-                # Strip any text after the product key
-                $productKey = $productKey -replace " .*$"
-            }
-        }    
-    }
+   
 
     # Launch setup
 
@@ -168,16 +176,26 @@ try {
         /INSTANCEDIR=C:\SQL 
         /SQLSYSADMINACCOUNTS=`"$($SqlServerAdminAccounts)`" 
         /SQLSVCACCOUNT=`"$($SqlServerSvcAccount)`" 
-        /SQLSVCPASSWORD=`"$($SqlServerSvcPassword)`" 
         /AGTSVCACCOUNT=`"$($SqlServerSvcAccount)`" 
-        /AGTSVCPASSWORD=`"$($SqlServerSvcPassword)`" 
         /IACCEPTSQLSERVERLICENSETERMS 
-        /PID=`"$($productKey)`" 
     "
-    if ($SqlServerInstanceName) {
-        $argumentList += "/INSTANCENAME='$($SqlServerInstanceName)'"
+    if ($SqlServerSvcPassword) { 
+        $argumentList += "    /SQLSVCPASSWORD=`"$($SqlServerSvcPassword)`"
+    " 
     } 
-    
+    if ($AgtServerSvcPassword) { 
+        $argumentList += "    /SQLAGTPASSWORD=`"$($AgtServerSvcPassword)`"
+    " 
+    } 
+    if ($SqlServerInstanceName) { 
+        $argumentList += "    /INSTANCENAME=`"$($SqlServerInstanceName) `"
+    " 
+    }
+    if ($productKey) { 
+        $argumentList += "    /PID=`"$($productKey)`"
+    " 
+    }  
+    $argumentList
     Start-Process -FilePath $setupPath -ArgumentList $argumentList
     
     write-host "==== Dismount the ISO file after installation ===="
