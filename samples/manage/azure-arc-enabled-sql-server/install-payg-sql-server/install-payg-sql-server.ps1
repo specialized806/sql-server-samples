@@ -145,7 +145,7 @@ try {
 
    # Pick the .iso file and mount
 
-    $noKeylist = "SQLFULL_ENU_ENTVL", "SQLFULL_ENU_STDVL", "SQLServer2022-x64-ENU-Ent", "SQLServer2022-x64-ENU-Std"
+    $noKeylist = "SQLFULL_ENU_ENTVL.iso", "SQLFULL_ENU_STDVL.iso", "SQLServer2022-x64-ENU-Ent.iso", "SQLServer2022-x64-ENU-Std.iso"
 
     foreach ($isoFile in $isoFiles) {
         $imagePath = $isoFile.FullName
@@ -175,7 +175,7 @@ try {
         /INSTANCEDIR=C:\SQL 
         /SQLSYSADMINACCOUNTS=`"$($SqlServerAdminAccounts)`" 
         /SQLSVCACCOUNT=`"$($SqlServerSvcAccount)`" 
-        /AGTSVCACCOUNT=`"$($SqlServerSvcAccount)`" 
+        /AGTSVCACCOUNT=`"$($AgtServerSvcAccount)`" 
         /IACCEPTSQLSERVERLICENSETERMS 
     "
     if ($SqlServerSvcPassword) { 
