@@ -12,7 +12,7 @@
 # -ResourceGroup [resource_goup]                (Optional. Limits the scope to a specific resoure group)
 # -MachineName [machine_name]                   (Optional. Limits the scope to a specific machine)
 # -LicenseType [license_type_value]             (Optional. Sets the license type to the specified value)
-# -EnabelESU  [Yes or No]                       (Optional. Enables the ESU policy the value is "Yes" or disables it if the value is "No"
+# -EnableESU  [Yes or No]                       (Optional. Enables the ESU policy the value is "Yes" or disables it if the value is "No"
 #                                               To enable, the license type must be "Paid" or "PAYG"
 # -Force                                        (Optional. Forces the chnahge of the license type to the specified value on all installed extensions.
 #                                               If Force is not specified, the -LicenseType value is set only if undefined. Ignored if -LicenseType  is not specified
@@ -115,7 +115,7 @@ function LoadModule
                 }
                 catch
                 {
-                    write-host "The request to lload module $($name) failed with the following error:"
+                    write-host "The request to load module $($name) failed with the following error:"
                     write-host $_.Exception.Message                
                     $retVal = $false
                 }
