@@ -217,7 +217,7 @@ try {
     $Settings = @{
         SqlManagement = @{ IsEnabled = $true };        
         LicenseType = "PAYG";
-        enableExtendedSecurityUpdates = $True;
+        enableExtendedSecurityUpdates = $False;
         esuLastUpdatedTimestamp = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
     }
     New-AzConnectedMachineExtension -ResourceGroupName $AzureResourceGroup -MachineName $hostName -Name "Microsoft.AzureData" -Publisher "Microsoft.AzureData" -ExtensionType "WindowsAgent.SqlServer" -Location $AzureRegion -Settings $Settings -EnableAutomaticUpgrade
