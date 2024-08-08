@@ -65,7 +65,7 @@ The script must be run in an elevated PowerShell session. It accepts the followi
 |-IsoFolder|Folder path|Required. The folder contrainng the files downloaded from the workspace.|
 |-Proxy|HTTP proxy URL|Optional. Needed if your networks is configured with an HTTP proxy.|
 
-## Example
+# Example
 
 The following command installs a SQL Server instance from the folder `c:\downloads`, connect it to subscription ID `<sub_id>`, resource group `<resource_group>` in West US, and configure it with LicenseType=PAYG. It use the default admin and service accounts and direct connectivity to Azure.
 
