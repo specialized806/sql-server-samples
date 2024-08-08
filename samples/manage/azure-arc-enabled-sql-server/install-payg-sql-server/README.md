@@ -63,7 +63,7 @@ The script must be run in an elevated PowerShell session. It accepts the followi
 |-AgtServerSvcAccount|SQL Agent service account|Optional. By default "NT AUTHORITY\NETWORK SERVICE" will be used.|
 |-AgtServerSvcPassword|SQL Agent service account pasdsword|Required if a custom service account is specified.|
 |-IsoFolder|Folder path|Required. The folder contrainng the files downloaded from the workspace.|
-|-Proxy|HTTP proxy URL|Optional. Needed if your networks is using a HTTP proxy.|
+|-Proxy|HTTP proxy URL|Optional. Needed if your networks is configured with an HTTP proxy.|
 
 ## Example
 
