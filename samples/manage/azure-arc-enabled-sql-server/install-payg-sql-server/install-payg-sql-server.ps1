@@ -15,6 +15,8 @@ param (
     [string]$SqlServerSvcPassword,
     [Parameter (Mandatory=$false)]
     [string]$AgtServerSvcAccount = "NT AUTHORITY\NETWORK SERVICE",
+    [Parameter (Mandatory=$false)]
+    [string]$AgtServerSvcPassword,
     [Parameter (Mandatory=$true)]
     [string]$IsoFolder,
     [Parameter (Mandatory=$false)]
@@ -76,9 +78,8 @@ function LoadModule
 }
 
 try {
-
+    
     write-host "==== Ensure PS version and load missing Azure modules ===="
-
     #
     # Suppress warnings
     #
@@ -103,6 +104,7 @@ try {
 
     write-host "==== Log in to Azure ===="
 
+    Update-AzConfig -EnableLoginByWam $false
     Connect-AzAccount | Out-Null
     $subscription = Get-AzSubscription -SubscriptionId $AzureSubscriptionId -ErrorAction SilentlyContinue
     if (-not $subscription) {
@@ -127,31 +129,34 @@ try {
 
      # Retrieve the product key if any
  
-    $keyFiles = Get-ChildItem $IsoFolder -Filter "*.txt"
-    
+    $keyFiles = (Get-ChildItem $IsoFolder -Filter "*.txt")
+    $productKey = ""
     foreach ($keyFile in $keyFiles) {
         # Read each line from the file
-        Get-Content $keyFile | ForEach-Object {
-            if ($_ -match "(?i)$($SqlServerEdition)" -and $_ -match "[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}.*") {
+        Get-Content $keyFile.fullname | ForEach-Object {
+            if ($_ -match "[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{4,}.*") {
                 # Extract the product key (including any following string after a space)
-                $productKey = [regex]::Match($_, '[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}.*').Value
+                $productKey = [regex]::Match($_, '[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{5,}-[A-Z0-9]{4,}.*').Value
                 # Strip any text after the product key
                 $productKey = $productKey -replace " .*$"
             }
         }    
     }
-    
-    $isoFiles = Get-ChildItem $IsoFolder -Filter "*.iso"
+        
 
+    $isoFiles = (Get-ChildItem $IsoFolder -Filter "*.iso")
+    
+    
    # Pick the .iso file and mount
 
     $noKeylist = "SQLFULL_ENU_ENTVL.iso", "SQLFULL_ENU_STDVL.iso", "SQLServer2022-x64-ENU-Ent.iso", "SQLServer2022-x64-ENU-Std.iso"
 
     foreach ($isoFile in $isoFiles) {
+        write-host("****isoFile: $($isoFile)")
         $imagePath = $isoFile.FullName
         if ($noKeylist -contains $isoFile.Name) {$productKey = ""}
         if (!(Get-DiskImage -ImagePath $imagePath).Attached) {
-            $mountResult = Mount-DiskImage -ImagePath $imagePath 
+            $mountResult = Mount-DiskImage -ImagePath $imagePath -PassThru
         } else {
             $mountResult = Get-DiskImage -ImagePath $imagePath 
         }
@@ -164,40 +169,31 @@ try {
     write-host "==== Run unattended SQL Server setup from the mounted volume ===="
 
    
-
     # Launch setup
 
     $setupPath = ($driveLetter + ":\setup.exe")
-    $argumentList = "
-        /q 
-        /ACTION=`"Install`" 
-        /FEATURES=SQL 
-        /INSTANCEDIR=C:\SQL 
-        /SQLSYSADMINACCOUNTS=`"$($SqlServerAdminAccounts)`" 
-        /SQLSVCACCOUNT=`"$($SqlServerSvcAccount)`" 
-        /AGTSVCACCOUNT=`"$($AgtServerSvcAccount)`" 
-        /IACCEPTSQLSERVERLICENSETERMS 
-    "
-    if ($SqlServerSvcPassword) { 
-        $argumentList += "    /SQLSVCPASSWORD=`"$($SqlServerSvcPassword)`"
-    " 
-    } 
-    if ($AgtServerSvcPassword) { 
-        $argumentList += "    /SQLAGTPASSWORD=`"$($AgtServerSvcPassword)`"
-    " 
-    } 
-    if ($SqlServerInstanceName) { 
-        $argumentList += "    /INSTANCENAME=`"$($SqlServerInstanceName) `"
-    " 
-    }
-    if ($productKey) { 
-        $argumentList += "    /PID=`"$($productKey)`"
-    " 
-    }  
+   
 
-    Start-Process -FilePath $setupPath -ArgumentList $argumentList
+    $argumentList = "/q  /ACTION=Install  /FEATURES=SQL  /SQLSVCACCOUNT=`"$($SqlServerSvcAccount)`"  /SQLSYSADMINACCOUNTS=`"$($SqlServerAdminAccounts)`"  /AGTSVCACCOUNT=`"$($AgtServerSvcAccount)`" /IACCEPTSQLSERVERLICENSETERMS"
+        # some optional arguments
+    if ($SqlServerInstanceName) {
+       $argumentList += " /INSTANCENAME= $($SqlServerInstanceName)"
+    } 
+    if ($productKey) {
+        $argumentList += " /PID=`"$($productKey)`""
+    } 
     
-    write-host "==== Dismount the ISO file after installation ===="
+    if ($SqlServerSvcPassword) {
+        $argumentList += " /SQLSVCPASSWORD=`"$($SqlServerSvcPassword)`""
+    }
+    
+    if ($AgtSvCPassword) {
+        $argumentList += " /AGTSVCPASSWORD=`"$($AgtSvCPassword)`""
+    }
+   
+    
+    Start-Process -Wait -FilePath $setupPath -ArgumentList $argumentList -RedirectStandardOutput setup-output.txt
+
 
     Dismount-DiskImage -ImagePath $imagePath | Out-Null
 
@@ -213,16 +209,17 @@ try {
     
     write-host "==== Install SQL Arc extension with LT=PAYG and upgrade to the latest version ===="
 
-    $extensionName = "WindowsAgent.SqlServer"
+
     $Settings = @{
         SqlManagement = @{ IsEnabled = $true };        
         LicenseType = "PAYG";
         enableExtendedSecurityUpdates = $False;
-        esuLastUpdatedTimestamp = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
     }
-    New-AzConnectedMachineExtension -ResourceGroupName $AzureResourceGroup -MachineName $hostName -Name "Microsoft.AzureData" -Publisher "Microsoft.AzureData" -ExtensionType "WindowsAgent.SqlServer" -Location $AzureRegion -Settings $Settings -EnableAutomaticUpgrade
 
-    # Step 10: Display the status of the Azure resource for Arc-enabled SQL Server    
+  
+    New-AzConnectedMachineExtension -ResourceGroupName $AzureResourceGroup -MachineName $hostName -Name "WindowsAgent.SqlServer" -Publisher "Microsoft.AzureData" -ExtensionType "WindowsAgent.SqlServer" -Location $AzureRegion -Settings $Settings -EnableAutomaticUpgrade
+
+    
     write-host "==== Display the status of the billable Arc-enabled host ===="
 
     $query = "
