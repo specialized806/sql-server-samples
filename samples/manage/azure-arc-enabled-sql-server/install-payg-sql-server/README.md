@@ -39,9 +39,17 @@ After running either of these command options, close and reopen PowerShell or re
 ```
 The result should be `Tls, Tls11, Tls12, Tls13`
 
+# Downloading the script
+
+To download the script to your current folder run:
+
+    ```console
+    curl https://raw.githubusercontent.com/microsoft/sql-server-samples/master/samples/manage/azure-arc-enabled-sql-server/install-payg-sql-server/install-payg-sql-server.ps1 -o install-payg-sql-server.ps1
+    ```
+
 # Launching the script
 
-The script must be launched from and elevated PowerShell prompt. It accepts the following command line parameters:
+The script must be run in an elevated PowerShell session. It accepts the following command line parameters:
 
 | **Parameter** &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  | **Value** &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&nbsp; &nbsp; &nbsp; &nbsp; | **Description** |
 |:--|:--|:--|
