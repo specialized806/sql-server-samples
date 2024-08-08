@@ -6,7 +6,7 @@ This script installs a pay-as-you-go SQL Server instance on your machine and aut
 
 - You have met the [onboarding prerequisites](https://learn.microsoft.com/sql/sql-server/azure-arc/prerequisites).
 - You have downloded a SQL Server image file from the workspace provided by Microsoft technical support. To obtain it, open a support request using "Get SQL Installation Media" subcategory and specify the desired version and edition. 
-- You are a local admin on the machine where you run the script. 
+- You are logged in to the machine with a administrator account. 
 - If you are installing SQL Server on Windows Server 2016, you have a secure TLS configuration as described below.
 
 
