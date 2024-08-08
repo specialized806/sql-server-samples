@@ -1,14 +1,13 @@
 # Overview
 
-This script installs a pay-as-you-go SQL Server instance on your machine and automatically connext it to Azure Arc using a downloaded SQL Server media.
+This script installs a pay-as-you-go SQL Server instance on your machine and automatically connects it to Azure using a downloaded SQL Server media.
 
 # Prerequisites
 
 - You have met the [onboarding prerequisites](https://learn.microsoft.com/sql/sql-server/azure-arc/prerequisites).
-- You have downloded a SQL Server image file from the workspace provided by Microsoft technical support. Tpo obtain it, open a support request using "Get SQL Installation Media" subcategory and soecify the desired version and edition. 
+- You have downloded a SQL Server image file from the workspace provided by Microsoft technical support. To obtain it, open a support request using "Get SQL Installation Media" subcategory and specify the desired version and edition. 
 - You are a local admin on the machine where you run the script. 
-- Your n
-- If you are using a machine running Windows Server 2016, you have completed the mitigation steps as described below.
+- If you are installing SQL Server on Windows Server 2016, you have a secure TLS configuration as described below.
 
 
 # Mitigating the TLS version issue on Windows Server 2016
