@@ -52,7 +52,7 @@ The script must be run in an elevated PowerShell session. It accepts the followi
 |-AzureRegion |region name| Required: the region to store the machuine and SQL Server meta-data. |
 |-SqlServerInstanceName | name of the instance|Optional: the machine name will be used if not specified|
 |-SqlServerAdminAccounts | SQL Server admin accounts | Optional. By default "BUILTIN\ADMINISTRATORS" will be used.|
-|-SqlServerSvcAccount| SQL Server services account |Optional. By default "NT AUTHORITY\SYSTEM" will be used.|
+|-SqlServerSvcAccount| SQL Server services account |Optional. By default "NT AUTHORITY\NETWORK SERVICE" will be used.|
 |-SqlServerSvcPassword| SQL Server service account password| Required if a custom service account is specified.|
 |-AgtServerSvcAccount|SQL Agent service account|Optional. By default "NT AUTHORITY\NETWORK SERVICE" will be used.|
 |-AgtServerSvcPassword|SQL Agent service account password|Required if a custom service account is specified.|

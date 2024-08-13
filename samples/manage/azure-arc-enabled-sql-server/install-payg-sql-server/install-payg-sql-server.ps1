@@ -10,7 +10,7 @@ param (
     [Parameter (Mandatory=$false)]
     [string]$SqlServerAdminAccounts = "BUILTIN\ADMINISTRATORS",
     [Parameter (Mandatory=$false)]
-    [string]$SqlServerSvcAccount = "NT AUTHORITY\SYSTEM",
+    [string]$SqlServerSvcAccount = "NT AUTHORITY\NETWORK SERVICE",
     [Parameter (Mandatory=$false)]
     [string]$SqlServerSvcPassword,
     [Parameter (Mandatory=$false)]
