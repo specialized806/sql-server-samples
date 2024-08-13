@@ -61,7 +61,7 @@ The script must be run in an elevated PowerShell session. It accepts the followi
 
 # Example
 
-The following command installs a SQL Server instance from the download folder, connects it to subscription ID `<sub_id>`, resource group `<resource_group>` in the West US region, and configures it with LicenseType=PAYG. It uses the default admin and service accounts, and uses a direct connection to Azure.
+The following command installs a SQL Server instance from the Downloads folder, connects it to subscription ID `<sub_id>`, resource group `<resource_group>` in the West US region, and configures it with LicenseType=PAYG. It uses the default admin and service accounts, and uses a direct connection to Azure.
 
 ```PowerShell
 .\install-payg-sql-server.ps1 -AzureSubscriptionId <sub_id> -AzureResourceGroup <resource_group> -AzureRegion westus -IsoFolder C:\Users\[YourUsername]\Downloads
