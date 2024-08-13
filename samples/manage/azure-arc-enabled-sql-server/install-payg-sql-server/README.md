@@ -5,7 +5,7 @@ This script installs a pay-as-you-go SQL Server instance on your machine and aut
 # Prerequisites
 
 - You have met the [onboarding prerequisites](https://learn.microsoft.com/sql/sql-server/azure-arc/prerequisites).
-- You have downloaded a SQL Server image file from the workspace provided by Microsoft technical support. To obtain it, open a support request using "Get SQL Installation Media" subcategory and specify the desired version and edition. 
+- You have downloaded a SQL Server image file from the workspace provided by Microsoft technical support. To obtain it, open a support request using the "Get SQL Installation Media" subcategory and specify the desired version and edition. 
 - You are logged in to the machine with an administrator account. 
 - If you are installing SQL Server on Windows Server 2016, you have a secure TLS configuration as described below.
 
@@ -61,8 +61,9 @@ The script must be run in an elevated PowerShell session. It accepts the followi
 
 # Example
 
-The following command installs a SQL Server instance from the folder `c:\downloads`, connects it to subscription ID `<sub_id>`, resource group `<resource_group>` in the West US region, and configures it with LicenseType=PAYG. It uses the default admin and service accounts, and uses a direct connection to Azure.
+The following command installs a SQL Server instance from the download folder, connects it to subscription ID `<sub_id>`, resource group `<resource_group>` in the West US region, and configures it with LicenseType=PAYG. It uses the default admin and service accounts, and uses a direct connection to Azure.
 
 ```PowerShell
-.\install-payg-sql-server.ps1 -AzureSubscriptionId <sub_id> -AzureResourceGroup <resource_group> -AzureRegion westus -IsoFolder c:\downloads
+.\install-payg-sql-server.ps1 -AzureSubscriptionId <sub_id> -AzureResourceGroup <resource_group> -AzureRegion westus -IsoFolder C:\Users\[YourUsername]\Downloads
+
 ```
