@@ -37,9 +37,9 @@ The result should be `Tls, Tls11, Tls12, Tls13`
 
 To download the script to your current folder run:
 
-    ```PowerShell
-    curl https://raw.githubusercontent.com/microsoft/sql-server-samples/master/samples/manage/azure-arc-enabled-sql-server/install-payg-sql-server/install-payg-sql-server.ps1 -o install-payg-sql-server.ps1
-    ```
+```console
+curl https://raw.githubusercontent.com/microsoft/sql-server-samples/master/samples/manage/azure-arc-enabled-sql-server/install-payg-sql-server/install-payg-sql-server.ps1 -o install-payg-sql-server.ps1
+```
 
 # Launching the script
 
