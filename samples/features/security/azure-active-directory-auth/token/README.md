@@ -35,8 +35,6 @@ The Token project contains a simple console application that connects to Azure S
 	- While still in the Azure portal, select Configure in your application.
 	- Find the Client ID value and copy it into a text editor, you will need this later when configuring your application
 
-      ![active directory portal Client ID image](../img/azure-active-directory-application-portal.png)
-
 2. Logon to your Azure SQL Server’s user database as an Microsoft Entra ID admin and using a T-SQL command provision a contained database user for your application principal:
 	```sql
 	CREATE USER [mytokentest] FROM EXTERNAL PROVIDER
