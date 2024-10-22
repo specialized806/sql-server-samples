@@ -10,7 +10,8 @@ builder["Initial Catalog"] = "demo"; // replace with your database name
 ```
 
 2. The builder["Authentication"] method must be set to SqlAuthenticationMethod.ActiveDirectoryIntegrated;
-![screenshot of visual studio showing builder fields to change] (/samples/features/security/azure-active-directory-auth/img/vs-authentication-method-integrated.png)
+
+   ![screenshot of visual studio showing builder fields to change](../img/vs-authentication-method-integrated.png)
 
 3. Running this project on a machine joined to a domain that is federated with Azure Active Directory will automatically use your Windows credentials and no password is required. The execution window will indicate a successful connection to the database followed by “Please press any key to stop”:
-![screenshot of application after successful authentication- "press any key to stop"] (/samples/features/security/azure-active-directory-auth/img/integrated-press-any-key-to-stop.png)
+   ![screenshot of application after successful authentication- "press any key to stop"](../img/integrated-press-any-key-to-stop.png)
