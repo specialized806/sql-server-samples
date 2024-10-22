@@ -17,8 +17,8 @@ The Token project contains a simple console application that connects to Azure S
 	+ If the Windows SDK was not installed, you may [download it here](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads)
 	+ You can learn more about the `makecert.exe` [utility here](https://msdn.microsoft.com/library/windows/desktop/aa386968.aspx)
 2. PowerShell with Azure Active Directory Module
-	+ To download the latest PowerShell version [see this page](https://azure.microsoft.com/documentation/articles/powershell-install-configure/#Install)
-	+ [Install the Microsoft Entra ID PowerShell Module](https://msdn.microsoft.com/en-us/library/azure/jj151815.aspx), if it is not already installed in your client machine.
+	+ To download the latest PowerShell version [see this page](https://learn.microsoft.com/powershell/azure/install-azure-powershell)
+	+ [Install the Microsoft Entra ID PowerShell Module](https://learn.microsoft.com/powershell/entra-powershell/installation), if it is not already installed in your client machine.
 
 <a name=run-this-sample></a>
 ## Run this sample
@@ -89,7 +89,7 @@ The Token project contains a simple console application that connects to Azure S
 	![Program.cs field highlights](../img/program-cs-builder-highlight.png)
 		- Make the following changes:
 		```csharp
-		    builder["Data Source"] = "<servername>.database.windows.net"; // replace with your server name
+		    builder["Data Source"] = "<server name>.database.windows.net"; // replace <server name> with your server name
 		    builder["Initial Catalog"] = "demo"; // replace with your database name
 		```
 6. Run the demo. (Select *Run* or press *F5*)
