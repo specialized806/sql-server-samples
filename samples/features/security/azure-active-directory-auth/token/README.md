@@ -73,7 +73,6 @@ The Token project contains a simple console application that connects to Azure S
 
 5. Configure the certificate and your application account in the *app.config* file in the project.
 	+ In Visual Studio, open *app.config* in the Solution Explorer
-	![App.config file highlights](../img/app-config-key-value-example.png)
 		- Find the app key `ida:Tenant` and replace the value with your AAD tenant name (your AAD domain)
 		- Find the app key `ida:ClientID` and replace the value with the Client ID for the application registration from the Azure Portal (the value from step 1).
 		- Find the app key `ida:Cert_Name` and replace the value with the subject name (CN) of the self-signed certificate you created
