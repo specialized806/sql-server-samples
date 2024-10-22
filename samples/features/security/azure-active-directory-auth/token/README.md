@@ -90,5 +90,4 @@ The Token project contains a simple console application that connects to Azure S
 		    builder["Initial Catalog"] = "demo"; // replace with your database name
 		```
 6. Run the demo. (Select *Run* or press *F5*)
-	+ A successful authorization should result in a message that states "Connected to the database" similar to the following:
-	![succesful auth](../img/token-press-any-key-to-stop.png)
+	+ A successful authorization should result in a message that includes "The access token obtained" and states "Connected to the database" and "Please press any key to stop".
