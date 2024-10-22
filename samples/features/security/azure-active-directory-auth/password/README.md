@@ -14,8 +14,6 @@ Note: A contained user database must exist and a contained database user represe
 
 Please note that the `builder["Authentication"]` method is set to `SqlAuthenticationMethod.ActiveDirectoryPassword`.
 
-![screenshot of visual studio showing builder fields to change](../img/vs-authentication-method-password.png)
-
 When running this program an execution window a prompt for the Microsoft Entra ID password request for user bob@cqclinic.onmicrosoft.com will appear. Once the password is entered the message should indicate a successful connection to the database followed by “Please press any key to stop”:
 
 ![screenshot of application after successful authentication- "press any key to stop"](../img/pwd-press-any-key-to-stop.png)
