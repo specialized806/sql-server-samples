@@ -1,0 +1,83 @@
+{
+  "properties": {
+    "lenses": [
+      {
+        "order": 0,
+        "parts": [
+          {
+            "position": {
+              "x": 0,
+              "y": 0,
+              "colSpan": 20,
+              "rowSpan": 11
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "chartType",
+                  "isOptional": true
+                },
+                {
+                  "name": "isShared",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryId",
+                  "isOptional": true
+                },
+                {
+                  "name": "formatResults",
+                  "isOptional": true
+                },
+                {
+                  "name": "partTitle",
+                  "value": "Query 1",
+                  "isOptional": true
+                },
+                {
+                  "name": "query",
+                  "value": "resources\r\n| where type == \"microsoft.hybridcompute/machines/extensions\" \r\n| where properties.type in (\"WindowsAgent.SqlServer\", \"LinuxAgent.SqlServer\") \r\n| extend targetMachineName = tolower(tostring(split(id, '/')[8])) // Extract the machine name from the extension's id\r\n| join kind=leftouter (\r\n    resources\r\n    | where type == \"microsoft.hybridcompute/machines\"\r\n    | project machineId = id, MachineName = name, subscriptionId, LowerMachineName = tolower(name), resourceGroup , MachineStatus= properties.status , MachineProvisioningStatus= properties.provisioningState, MachineErrors = properties.errorDetails //Project relvant machine health information.\r\n) on $left.targetMachineName == $right.LowerMachineName and $left.resourceGroup == $right.resourceGroup and $left.subscriptionId == $right.subscriptionId // Join Based on MachineName in the id and the machine's name, the resource group, and the subscription. This join allows us to present the data of the machine as well as the extension in the final output.\r\n| extend statusExpirationLengthRange = 3d // Change this value to change the acceptable range for the last time an extension should have reported its status.\r\n| extend startDate = startofday(now() - statusExpirationLengthRange), endDate = startofday(now()) // Get the start and end positon for the given range.\r\n| extend extractedDateString = extract(\"timestampUTC : (\\\\d{4}\\\\W\\\\d{2}\\\\W\\\\d{2})\", 1, tostring(properties.instanceView.status.message)) // Extracting the date string for the LastUploadTimestamp. Is empty if none is found.\r\n| extend extractedDateStringYear = split(extractedDateString, '/')[0], extractedDateStringMonth = split(extractedDateString, '/')[1], extractedDateStringDay = split(extractedDateString, '/')[2] // Identifying each of the parts of the date that was extracted from the message.\r\n| extend extractedDate = todatetime(strcat(extractedDateStringYear,\"-\",extractedDateStringMonth,\"-\",extractedDateStringDay,\"T00:00:00Z\")) // Converting to a datetime object and rewriting string into ISO format because todatetime() does not work using the previous format.\r\n| extend isNotInDateRange = not(extractedDate >= startDate and extractedDate <= endDate) // Created bool which is true if the date we extracted from the message is not within the specified range. This bool will also be true if the date was not found in the message.\r\n| where properties.instanceView.status.message !contains \"SQL Server Extension Agent: Healthy\" // Begin searching for unhealthy extensions using the following 1. Does extension report being healthy. 2. Is last upload within the given range. 3. Is the upload status in an OK state. 4. Is provisioning state not in a succeeded state.\r\n    or isNotInDateRange\r\n    or properties.instanceView.status.message !contains \"uploadStatus : OK\"\r\n    or properties.provisioningState != \"Succeeded\"\r\n    or MachineStatus != \"Connected\"\r\n| extend FailureReasons = strcat( // Makes a String to list all the reason that this resource got flagged for\r\n        iif(MachineStatus != \"Connected\",strcat(\"- Machine's status is \", MachineStatus,\" -\"),\"\") ,\r\n        iif(MachineErrors != \"[]\",\"- Machine reports errors -\", \"\"),\r\n        iif(properties.instanceView.status.message !contains \"SQL Server Extension Agent: Healthy\",\"- Extension reported unhealthy -\",\"\"), \r\n        iif(isNotInDateRange,\"- Last upload outside acceptable range -\",\"\"),\r\n        iif(properties.instanceView.status.message !contains \"uploadStatus : OK\",\"- Upload status is not reported OK -\",\"\"), \r\n        iif(properties.provisioningState != \"Succeeded\",strcat(\"- Extension provisiong state is \", properties.provisioningState,\" -\"),\"\") \r\n    )\r\n| extend RecommendedAction = //Attempt to Identify RootCause based on information gathered, and point customer to what they should investigate first.\r\n    iif(MachineStatus == \"Disconnected\", \"Machine is disconnected. Please reconnect the machine.\",\r\n        iif(MachineStatus == \"Expired\", \"Machine cert is expired. Go to the machine on the Azure Portal for more information on how to resolve this issue.\",\r\n            iif(MachineStatus != \"Connected\", strcat(\"Machine status is \", MachineStatus,\". Investigate and resolve this issue.\"),\r\n                iif(MachineProvisioningStatus != \"Succeeded\", strcat(\"Machine provisioning status is \", MachineProvisioningStatus, \". Investigate and resolve machine provisioning status\"),\r\n                    iff(MachineErrors != \"[]\", \"Machine is reporting errors. Investigate and resolve machine errors\",\r\n                        iif(properties.provisioningState != \"Succeeded\", strcat(\"Extension provisioning status is \", properties.provisioningState,\". Investigate and resolve extension provisioning state.\"),\r\n                            iff(properties.instanceView.status.message !contains \"SQL Server Extension Agent:\" and properties.instanceView.status.message contains \"SQL Server Extension Agent Deployer\", \"SQL Server extension eeployer ran. However, SQL Server extension seems to not be running. Verify that the extension is currently running.\",\r\n                                iff(properties.instanceView.status.message !contains \"uploadStatus : OK\" or isNotInDateRange or properties.instanceView.status.message !contains \"SQL Server Extension Agent: Healthy\", \"Extension reported as unhealthy. View FailureReasons and LastExtensionStatusMessage for more information as to the cause of the failure.\",\r\n                                    \"Unable to reccommend actions. Please view FailureReasons.\"\r\n                                )\r\n                            )\r\n                        )\r\n                    )\r\n                )\r\n            )\r\n        )\r\n    )\r\n| project ID = id, MachineName, ResourceGroup = resourceGroup, SubscriptionID = subscriptionId, Location = location, RecommendedAction, FailureReasons, LicenseType = properties.settings.LicenseType, \r\n    LastReportedExtensionHealth = iif(properties.instanceView.status.message !contains \"SQL Server Extension Agent: Healthy\", \"Unhealthy\", \"Healthy\"),\r\n    LastExtensionUploadTimestamp = iif(indexof(properties.instanceView.status.message, \"timestampUTC : \") > 0,\r\n        substring(properties.instanceView.status.message, indexof(properties.instanceView.status.message, \"timestampUTC : \") + 15, 10),\r\n        \"no timestamp\"),\r\n    LastExtensionUploadStatus = iif(indexof(properties.instanceView.status.message, \"uploadStatus : OK\") > 0, \"OK\", \"Unhealthy\"),\r\n    ExtensionProvisioningState = properties.provisioningState,\r\n    MachineStatus, MachineErrors, MachineProvisioningStatus,MachineId = machineId,\r\n    LastExtensionStatusMessage = properties.instanceView.status.message",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryScope",
+                  "value": {
+                    "scope": 0,
+                    "values": []
+                  },
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/ArgQueryGridTile",
+              "settings": {},
+              "partHeader": {
+                "title": "Arc-enabled SQL Server Health",
+                "subtitle": ""
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "model": {
+        "timeRange": {
+          "value": {
+            "relative": {
+              "duration": 24,
+              "timeUnit": 1
+            }
+          },
+          "type": "MsPortalFx.Composition.Configuration.ValueTypes.TimeRange"
+        }
+      }
+    }
+  },
+  "name": "Arc-enabled SQL Server Health",
+  "type": "Microsoft.Portal/dashboards",
+  "location": "INSERT LOCATION",
+  "tags": {
+    "hidden-title": "Arc-enabled SQL Server Health"
+  },
+  "apiVersion": "2022-12-01-preview"
+}

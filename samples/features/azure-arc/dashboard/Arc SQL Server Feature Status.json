@@ -1,334 +1,559 @@
 {
   "properties": {
-    "title": "Arc SQL Server Feature Status",
-    "pages": [
+    "lenses": [
       {
-        "title": "Feature Status",
-        "tiles": [
+        "order": 0,
+        "parts": [
           {
-            "data": {
-              "kind": "arg",
-              "query": "resources\r\n| where type == \"microsoft.azurearcdata/sqlserverinstances\"\r\n| project \r\nid, \r\nMigrationAssessment = iif(properties.migration.assessment.enabled == 'true', 'Enabled', 'Disabled'), \r\nMonitoring = iif(properties.monitoring.enabled == 'true', 'Enabled', 'Disabled'), \r\nBackupEnabled = iif(isempty(properties.backupPolicy.retentionPeriodDays),'Disabled', iif(properties.backupPolicy.retentionPeriodDays == 0,'Disabled','Enabled'))\r\n| order by id asc",
-              "usedParameters": []
-            },
-            "visualization": {
-              "type": "table",
-              "options": {
-                "hideTileTitle": false,
-                "table__enableFormatting": true,
-                "table__enableRenderLinks": true,
-                "table__renderLinksForColumns": [],
-                "colorRules": [],
-                "colorRulesDisabled": true,
-                "colorStyle": "light",
-                "crossFilter": [],
-                "crossFilterDisabled": false,
-                "drillthrough": [],
-                "drillthroughDisabled": false
-              }
-            },
-            "title": "SQL Server instance features status",
-            "subtitle": "Shows enabled/disabled for each feature that is configured at the SQL Server instance level",
-            "type": "QueryTile",
-            "layout": {
+            "position": {
               "x": 0,
               "y": 0,
-              "width": 8,
-              "height": 4
+              "colSpan": 11,
+              "rowSpan": 7
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "chartType",
+                  "isOptional": true
+                },
+                {
+                  "name": "isShared",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryId",
+                  "isOptional": true
+                },
+                {
+                  "name": "formatResults",
+                  "isOptional": true
+                },
+                {
+                  "name": "partTitle",
+                  "value": "Query 1",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryScope",
+                  "value": {
+                    "scope": 0,
+                    "values": []
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "query",
+                  "value": "resources\r\n| where type == \"microsoft.azurearcdata/sqlserverinstances\"\r\n| project \r\nid, \r\nMigrationAssessment = iif(properties.migration.assessment.enabled == 'true', 'ENABLED', 'disabled'), \r\nMonitoring = iif(properties.monitoring.enabled == 'true', 'ENABLED', 'disabled'), \r\nBackupEnabled = iif(isempty(properties.backupPolicy.retentionPeriodDays),'disabled', iif(properties.backupPolicy.retentionPeriodDays == 0,'disabled','ENABLED'))\r\n| order by id asc",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/ArgQueryGridTile",
+              "settings": {},
+              "partHeader": {
+                "title": "SQL Server instance features status",
+                "subtitle": "Shows enabled/disabled for each feature that is configured at the SQL Server instance level"
+              }
             }
           },
           {
-            "data": {
-              "kind": "arg",
-              "query": "resources\r\n| where type == \"microsoft.hybridcompute/machines/extensions\"\r\n| where properties.type in (\"WindowsAgent.SqlServer\",\"LinuxAgent.SqlServer\")\r\n| project\r\nid,\r\nESU = iff(notnull(properties.settings.enableExtendedSecurityUpdates), iff(properties.settings.enableExtendedSecurityUpdates == true,\"Enabled\",\"Disabled\"), \"Disabled\"),\r\nPurview = iff(notnull(properties.settings.ExternalPolicyBasedAuthorization),\"Enabled\",\"Disabled\"),\r\nEntra = iff(notnull(properties.settings.AzureAD),\"Enabled\",\"Disabled\"),\r\nBPA = iff(notnull(properties.settings.AssessmentSettings),\"Enabled\",\"Disabled\"),\r\nAutomaticUpdate = iff(properties.settings.MicrosoftUpdateConfiguration.EnableMicrosoftUpdate == true, \"Enabled\", \"Disabled\")\r\n| order by id asc",
-              "usedParameters": []
+            "position": {
+              "x": 11,
+              "y": 0,
+              "colSpan": 6,
+              "rowSpan": 7
             },
-            "visualization": {
-              "type": "table",
-              "options": {
-                "hideTileTitle": false,
-                "table__enableFormatting": true,
-                "table__enableRenderLinks": true,
-                "table__renderLinksForColumns": [],
-                "colorRules": [],
-                "colorRulesDisabled": true,
-                "colorStyle": "light",
-                "crossFilter": [],
-                "crossFilterDisabled": false,
-                "drillthrough": [],
-                "drillthroughDisabled": false
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "isShared",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryId",
+                  "isOptional": true
+                },
+                {
+                  "name": "formatResults",
+                  "isOptional": true
+                },
+                {
+                  "name": "partTitle",
+                  "value": "Query 1",
+                  "isOptional": true
+                },
+                {
+                  "name": "query",
+                  "value": "resources\n| where type == \"microsoft.azurearcdata/sqlserverinstances\"\n| project \nid, \nMigrationAssessment = iif(properties.migration.assessment.enabled == 'true', 'Enabled', 'Disabled')\n| summarize count(id) by MigrationAssessment",
+                  "isOptional": true
+                },
+                {
+                  "name": "chartType",
+                  "value": 2,
+                  "isOptional": true
+                },
+                {
+                  "name": "queryScope",
+                  "value": {
+                    "scope": 0,
+                    "values": []
+                  },
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/ArgQueryChartTile",
+              "settings": {},
+              "partHeader": {
+                "title": "Migration assessment",
+                "subtitle": ""
               }
+            }
+          },
+          {
+            "position": {
+              "x": 17,
+              "y": 0,
+              "colSpan": 6,
+              "rowSpan": 7
             },
-            "title": "SQL Server extension feature status",
-            "subtitle": "Shows the enabled and disabled state of each feature configured at the SQL Server extension level",
-            "type": "QueryTile",
-            "layout": {
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "isShared",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryId",
+                  "isOptional": true
+                },
+                {
+                  "name": "formatResults",
+                  "isOptional": true
+                },
+                {
+                  "name": "partTitle",
+                  "value": "Query 1",
+                  "isOptional": true
+                },
+                {
+                  "name": "query",
+                  "value": "resources\n| where type == \"microsoft.azurearcdata/sqlserverinstances\"\n| project \nid, \nMonitoring = iif(properties.monitoring.enabled == 'true', 'Enabled', 'Disabled')\n| summarize count(id) by Monitoring",
+                  "isOptional": true
+                },
+                {
+                  "name": "chartType",
+                  "value": 2,
+                  "isOptional": true
+                },
+                {
+                  "name": "queryScope",
+                  "value": {
+                    "scope": 0,
+                    "values": []
+                  },
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/ArgQueryChartTile",
+              "settings": {},
+              "partHeader": {
+                "title": "Monitoring dashboards",
+                "subtitle": ""
+              }
+            }
+          },
+          {
+            "position": {
+              "x": 23,
+              "y": 0,
+              "colSpan": 6,
+              "rowSpan": 7
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "isShared",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryId",
+                  "isOptional": true
+                },
+                {
+                  "name": "formatResults",
+                  "isOptional": true
+                },
+                {
+                  "name": "partTitle",
+                  "value": "Query 1",
+                  "isOptional": true
+                },
+                {
+                  "name": "query",
+                  "value": "resources\n| where type == \"microsoft.azurearcdata/sqlserverinstances\"\n| project \nid, \nBackupEnabled = iif(isempty(properties.backupPolicy.retentionPeriodDays),'Disabled', iif(properties.backupPolicy.retentionPeriodDays == 0,'Disabled','Enabled'))\n| summarize count(id) by BackupEnabled",
+                  "isOptional": true
+                },
+                {
+                  "name": "chartType",
+                  "value": 2,
+                  "isOptional": true
+                },
+                {
+                  "name": "queryScope",
+                  "value": {
+                    "scope": 0,
+                    "values": []
+                  },
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/ArgQueryChartTile",
+              "settings": {},
+              "partHeader": {
+                "title": "Backups",
+                "subtitle": ""
+              }
+            }
+          },
+          {
+            "position": {
               "x": 0,
-              "y": 4,
-              "width": 8,
-              "height": 4
+              "y": 7,
+              "colSpan": 11,
+              "rowSpan": 14
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "chartType",
+                  "isOptional": true
+                },
+                {
+                  "name": "isShared",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryId",
+                  "isOptional": true
+                },
+                {
+                  "name": "formatResults",
+                  "isOptional": true
+                },
+                {
+                  "name": "partTitle",
+                  "value": "Query 1",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryScope",
+                  "value": {
+                    "scope": 0,
+                    "values": []
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "query",
+                  "value": "resources\r\n| where type == \"microsoft.hybridcompute/machines/extensions\"\r\n| where properties.type in (\"WindowsAgent.SqlServer\",\"LinuxAgent.SqlServer\")\r\n| project\r\nid,\r\nESU = iff(notnull(properties.settings.enableExtendedSecurityUpdates), iff(properties.settings.enableExtendedSecurityUpdates == true,\"ENABLED\",\"disabled\"), \"disabled\"),\r\nPurview = iff(notnull(properties.settings.ExternalPolicyBasedAuthorization),\"ENABLED\",\"disabled\"),\r\nEntra = iff(notnull(properties.settings.AzureAD),\"ENABLED\",\"disabled\"),\r\nBPA = iff(notnull(properties.settings.AssessmentSettings),\"ENABLED\",\"disabled\"),\r\nAutomaticUpdate = iff(properties.settings.MicrosoftUpdateConfiguration.EnableMicrosoftUpdate == true, \"ENABLED\", \"disabled\")\r\n| order by id asc",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/ArgQueryGridTile",
+              "settings": {},
+              "partHeader": {
+                "title": "SQL Server extension feature status",
+                "subtitle": "Shows the enabled and disabled status of each feature at the SQL Server extension level"
+              }
             }
           },
           {
-            "data": {
-              "kind": "arg",
-              "query": "resources\r\n| where type == \"microsoft.hybridcompute/machines/extensions\"\r\n| where properties.type in (\"WindowsAgent.SqlServer\",\"LinuxAgent.SqlServer\")\r\n| project id, ESU = iff(notnull(properties.settings.enableExtendedSecurityUpdates), iff(properties.settings.enableExtendedSecurityUpdates == true,\"Enabled\",\"Disabled\"), \"Disabled\")\r\n| summarize count(id) by ESU",
-              "usedParameters": []
+            "position": {
+              "x": 11,
+              "y": 7,
+              "colSpan": 6,
+              "rowSpan": 7
             },
-            "visualization": {
-              "type": "pie",
-              "options": {
-                "hideTileTitle": false,
-                "table__enableFormatting": true,
-                "table__enableRenderLinks": true,
-                "table__renderLinksForColumns": [],
-                "colorRules": [],
-                "colorRulesDisabled": true,
-                "colorStyle": "light",
-                "crossFilter": [],
-                "crossFilterDisabled": false,
-                "drillthrough": [],
-                "drillthroughDisabled": false
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "isShared",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryId",
+                  "isOptional": true
+                },
+                {
+                  "name": "formatResults",
+                  "isOptional": true
+                },
+                {
+                  "name": "partTitle",
+                  "value": "Query 1",
+                  "isOptional": true
+                },
+                {
+                  "name": "query",
+                  "value": "resources\n| where type == \"microsoft.hybridcompute/machines/extensions\"\n| where properties.type in (\"WindowsAgent.SqlServer\",\"LinuxAgent.SqlServer\")\n| project id, ESU = iff(notnull(properties.settings.enableExtendedSecurityUpdates), iff(properties.settings.enableExtendedSecurityUpdates == true,\"Enabled\",\"Disabled\"), \"Disabled\")\n| summarize count(id) by ESU\n",
+                  "isOptional": true
+                },
+                {
+                  "name": "chartType",
+                  "value": 2,
+                  "isOptional": true
+                },
+                {
+                  "name": "queryScope",
+                  "value": {
+                    "scope": 0,
+                    "values": []
+                  },
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/ArgQueryChartTile",
+              "settings": {},
+              "partHeader": {
+                "title": "Extended Security Updates",
+                "subtitle": ""
               }
-            },
-            "title": "Extended Security Updates",
-            "subtitle": "",
-            "type": "QueryTile",
-            "layout": {
-              "x": 8,
-              "y": 4,
-              "width": 6,
-              "height": 4
             }
           },
           {
-            "data": {
-              "kind": "arg",
-              "query": "resources\r\n| where type == \"microsoft.hybridcompute/machines/extensions\"\r\n| where properties.type in (\"WindowsAgent.SqlServer\",\"LinuxAgent.SqlServer\")\r\n| project id, Purview = iff(notnull(properties.settings.ExternalPolicyBasedAuthorization), iff(properties.settings.enableExtendedSecurityUpdates == true,\"Enabled\",\"Disabled\"), \"Disabled\")\r\n| summarize count(id) by Purview",
-              "usedParameters": []
+            "position": {
+              "x": 17,
+              "y": 7,
+              "colSpan": 6,
+              "rowSpan": 7
             },
-            "visualization": {
-              "type": "pie",
-              "options": {
-                "hideTileTitle": false,
-                "table__enableFormatting": true,
-                "table__enableRenderLinks": true,
-                "table__renderLinksForColumns": [],
-                "colorRules": [],
-                "colorRulesDisabled": true,
-                "colorStyle": "light",
-                "crossFilter": [],
-                "crossFilterDisabled": false,
-                "drillthrough": [],
-                "drillthroughDisabled": false
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "isShared",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryId",
+                  "isOptional": true
+                },
+                {
+                  "name": "formatResults",
+                  "isOptional": true
+                },
+                {
+                  "name": "partTitle",
+                  "value": "Query 1",
+                  "isOptional": true
+                },
+                {
+                  "name": "query",
+                  "value": "resources\n| where type == \"microsoft.hybridcompute/machines/extensions\"\n| where properties.type in (\"WindowsAgent.SqlServer\",\"LinuxAgent.SqlServer\")\n| project id, AutomaticUpdates = iff(properties.settings.MicrosoftUpdateConfiguration.EnableMicrosoftUpdate == true, \"Enabled\", \"Disabled\")\n| summarize count(id) by AutomaticUpdates",
+                  "isOptional": true
+                },
+                {
+                  "name": "chartType",
+                  "value": 2,
+                  "isOptional": true
+                },
+                {
+                  "name": "queryScope",
+                  "value": {
+                    "scope": 0,
+                    "values": []
+                  },
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/ArgQueryChartTile",
+              "settings": {},
+              "partHeader": {
+                "title": "Automatic Updates",
+                "subtitle": ""
               }
-            },
-            "title": "Purview",
-            "subtitle": "",
-            "type": "QueryTile",
-            "layout": {
-              "x": 14,
-              "y": 4,
-              "width": 6,
-              "height": 4
             }
           },
           {
-            "data": {
-              "kind": "arg",
-              "query": "resources\r\n| where type == \"microsoft.hybridcompute/machines/extensions\"\r\n| where properties.type in (\"WindowsAgent.SqlServer\",\"LinuxAgent.SqlServer\")\r\n| project id, Entra = iff(notnull(properties.settings.AzureAD), iff(properties.settings.enableExtendedSecurityUpdates == true,\"Enabled\",\"Disabled\"), \"Disabled\")\r\n| summarize count(id) by Entra",
-              "usedParameters": []
+            "position": {
+              "x": 23,
+              "y": 7,
+              "colSpan": 6,
+              "rowSpan": 7
             },
-            "visualization": {
-              "type": "pie",
-              "options": {
-                "hideTileTitle": false,
-                "table__enableFormatting": true,
-                "table__enableRenderLinks": true,
-                "table__renderLinksForColumns": [],
-                "colorRules": [],
-                "colorRulesDisabled": true,
-                "colorStyle": "light",
-                "crossFilter": [],
-                "crossFilterDisabled": false,
-                "drillthrough": [],
-                "drillthroughDisabled": false
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "isShared",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryId",
+                  "isOptional": true
+                },
+                {
+                  "name": "formatResults",
+                  "isOptional": true
+                },
+                {
+                  "name": "partTitle",
+                  "value": "Query 1",
+                  "isOptional": true
+                },
+                {
+                  "name": "query",
+                  "value": "resources\n| where type == \"microsoft.hybridcompute/machines/extensions\"\n| where properties.type in (\"WindowsAgent.SqlServer\",\"LinuxAgent.SqlServer\")\n| project id, Purview = iff(notnull(properties.settings.ExternalPolicyBasedAuthorization), iff(properties.settings.enableExtendedSecurityUpdates == true,\"Enabled\",\"Disabled\"), \"Disabled\")\n| summarize count(id) by Purview",
+                  "isOptional": true
+                },
+                {
+                  "name": "chartType",
+                  "value": 2,
+                  "isOptional": true
+                },
+                {
+                  "name": "queryScope",
+                  "value": {
+                    "scope": 0,
+                    "values": []
+                  },
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/ArgQueryChartTile",
+              "settings": {},
+              "partHeader": {
+                "title": "Purview",
+                "subtitle": ""
               }
-            },
-            "title": "Entra ID authentication",
-            "subtitle": "",
-            "type": "QueryTile",
-            "layout": {
-              "x": 8,
-              "y": 8,
-              "width": 6,
-              "height": 4
             }
           },
           {
-            "data": {
-              "kind": "arg",
-              "query": "resources\r\n| where type == \"microsoft.hybridcompute/machines/extensions\"\r\n| where properties.type in (\"WindowsAgent.SqlServer\",\"LinuxAgent.SqlServer\")\r\n| project id, BPA = iff(notnull(properties.settings.AssessmentSettings), iff(properties.settings.enableExtendedSecurityUpdates == true,\"Enabled\",\"Disabled\"), \"Disabled\")\r\n| summarize count(id) by BPA",
-              "usedParameters": []
+            "position": {
+              "x": 11,
+              "y": 14,
+              "colSpan": 6,
+              "rowSpan": 7
             },
-            "visualization": {
-              "type": "pie",
-              "options": {
-                "hideTileTitle": false,
-                "table__enableFormatting": true,
-                "table__enableRenderLinks": true,
-                "table__renderLinksForColumns": [],
-                "colorRules": [],
-                "colorRulesDisabled": true,
-                "colorStyle": "light",
-                "crossFilter": [],
-                "crossFilterDisabled": false,
-                "drillthrough": [],
-                "drillthroughDisabled": false
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "isShared",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryId",
+                  "isOptional": true
+                },
+                {
+                  "name": "formatResults",
+                  "isOptional": true
+                },
+                {
+                  "name": "partTitle",
+                  "value": "Query 1",
+                  "isOptional": true
+                },
+                {
+                  "name": "query",
+                  "value": "resources\n| where type == \"microsoft.hybridcompute/machines/extensions\"\n| where properties.type in (\"WindowsAgent.SqlServer\",\"LinuxAgent.SqlServer\")\n| project id, Entra = iff(notnull(properties.settings.AzureAD), iff(properties.settings.enableExtendedSecurityUpdates == true,\"Enabled\",\"Disabled\"), \"Disabled\")\n| summarize count(id) by Entra",
+                  "isOptional": true
+                },
+                {
+                  "name": "chartType",
+                  "value": 2,
+                  "isOptional": true
+                },
+                {
+                  "name": "queryScope",
+                  "value": {
+                    "scope": 0,
+                    "values": []
+                  },
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/ArgQueryChartTile",
+              "settings": {},
+              "partHeader": {
+                "title": "Entra ID authentication",
+                "subtitle": ""
               }
-            },
-            "title": "Best practices assessment",
-            "subtitle": "",
-            "type": "QueryTile",
-            "layout": {
-              "x": 14,
-              "y": 8,
-              "width": 6,
-              "height": 4
             }
           },
           {
-            "data": {
-              "kind": "arg",
-              "query": "resources\r\n| where type == \"microsoft.hybridcompute/machines/extensions\"\r\n| where properties.type in (\"WindowsAgent.SqlServer\",\"LinuxAgent.SqlServer\")\r\n| project id, AutomaticUpdates = iff(properties.settings.MicrosoftUpdateConfiguration.EnableMicrosoftUpdate == true, \"Enabled\", \"Disabled\")\r\n| summarize count(id) by AutomaticUpdates",
-              "usedParameters": []
+            "position": {
+              "x": 17,
+              "y": 14,
+              "colSpan": 6,
+              "rowSpan": 7
             },
-            "visualization": {
-              "type": "pie",
-              "options": {
-                "hideTileTitle": false,
-                "table__enableFormatting": true,
-                "table__enableRenderLinks": true,
-                "table__renderLinksForColumns": [],
-                "colorRules": [],
-                "colorRulesDisabled": true,
-                "colorStyle": "light",
-                "crossFilter": [],
-                "crossFilterDisabled": false,
-                "drillthrough": [],
-                "drillthroughDisabled": false
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "isShared",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryId",
+                  "isOptional": true
+                },
+                {
+                  "name": "formatResults",
+                  "isOptional": true
+                },
+                {
+                  "name": "partTitle",
+                  "value": "Query 1",
+                  "isOptional": true
+                },
+                {
+                  "name": "query",
+                  "value": "resources\n| where type == \"microsoft.hybridcompute/machines/extensions\"\n| where properties.type in (\"WindowsAgent.SqlServer\",\"LinuxAgent.SqlServer\")\n| project id, BPA = iff(notnull(properties.settings.AssessmentSettings), iff(properties.settings.enableExtendedSecurityUpdates == true,\"Enabled\",\"Disabled\"), \"Disabled\")\n| summarize count(id) by BPA",
+                  "isOptional": true
+                },
+                {
+                  "name": "chartType",
+                  "value": 2,
+                  "isOptional": true
+                },
+                {
+                  "name": "queryScope",
+                  "value": {
+                    "scope": 0,
+                    "values": []
+                  },
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/ArgQueryChartTile",
+              "settings": {},
+              "partHeader": {
+                "title": "Best practices assessment",
+                "subtitle": ""
               }
-            },
-            "title": "Automatic Updates",
-            "subtitle": "",
-            "type": "QueryTile",
-            "layout": {
-              "x": 20,
-              "y": 4,
-              "width": 6,
-              "height": 4
-            }
-          },
-          {
-            "data": {
-              "kind": "arg",
-              "query": "resources\r\n| where type == \"microsoft.azurearcdata/sqlserverinstances\"\r\n| project \r\nid, \r\nMigrationAssessment = iif(properties.migration.assessment.enabled == 'true', 'Enabled', 'Disabled')\r\n| summarize count(id) by MigrationAssessment",
-              "usedParameters": []
-            },
-            "visualization": {
-              "type": "pie",
-              "options": {
-                "hideTileTitle": false,
-                "table__enableFormatting": true,
-                "table__enableRenderLinks": true,
-                "table__renderLinksForColumns": [],
-                "colorRules": [],
-                "colorRulesDisabled": true,
-                "colorStyle": "light",
-                "crossFilter": [],
-                "crossFilterDisabled": false,
-                "drillthrough": [],
-                "drillthroughDisabled": false
-              }
-            },
-            "title": "Migration assessment",
-            "subtitle": "",
-            "type": "QueryTile",
-            "layout": {
-              "x": 8,
-              "y": 0,
-              "width": 6,
-              "height": 4
-            }
-          },
-          {
-            "data": {
-              "kind": "arg",
-              "query": "resources\r\n| where type == \"microsoft.azurearcdata/sqlserverinstances\"\r\n| project \r\nid, \r\nMonitoring = iif(properties.monitoring.enabled == 'true', 'Enabled', 'Disabled')\r\n| summarize count(id) by Monitoring",
-              "usedParameters": []
-            },
-            "visualization": {
-              "type": "pie",
-              "options": {
-                "hideTileTitle": false,
-                "table__enableFormatting": true,
-                "table__enableRenderLinks": true,
-                "table__renderLinksForColumns": [],
-                "colorRules": [],
-                "colorRulesDisabled": true,
-                "colorStyle": "light",
-                "crossFilter": [],
-                "crossFilterDisabled": false,
-                "drillthrough": [],
-                "drillthroughDisabled": false
-              }
-            },
-            "title": "Monitoring",
-            "subtitle": "",
-            "type": "QueryTile",
-            "layout": {
-              "x": 14,
-              "y": 0,
-              "width": 6,
-              "height": 4
-            }
-          },
-          {
-            "data": {
-              "kind": "arg",
-              "query": "resources\r\n| where type == \"microsoft.azurearcdata/sqlserverinstances\"\r\n| project \r\nid, \r\nBackupEnabled = iif(isempty(properties.backupPolicy.retentionPeriodDays),'Disabled', iif(properties.backupPolicy.retentionPeriodDays == 0,'Disabled','Enabled'))\r\n| summarize count(id) by BackupEnabled",
-              "usedParameters": []
-            },
-            "visualization": {
-              "type": "pie",
-              "options": {
-                "hideTileTitle": false,
-                "table__enableFormatting": true,
-                "table__enableRenderLinks": true,
-                "table__renderLinksForColumns": [],
-                "colorRules": [],
-                "colorRulesDisabled": true,
-                "colorStyle": "light",
-                "crossFilter": [],
-                "crossFilterDisabled": false,
-                "drillthrough": [],
-                "drillthroughDisabled": false
-              }
-            },
-            "title": "Backups",
-            "subtitle": "",
-            "type": "QueryTile",
-            "layout": {
-              "x": 20,
-              "y": 0,
-              "width": 6,
-              "height": 4
             }
           }
         ]
       }
     ],
-    "parameters": [],
-    "provisioningState": "Succeeded"
-  }
+    "metadata": {
+      "model": {
+        "timeRange": {
+          "value": {
+            "relative": {
+              "duration": 24,
+              "timeUnit": 1
+            }
+          },
+          "type": "MsPortalFx.Composition.Configuration.ValueTypes.TimeRange"
+        }
+      }
+    }
+  },
+  "name": "Arc-enabled SQL Server Features",
+  "type": "Microsoft.Portal/dashboards",
+  "location": "INSERT LOCATION",
+  "tags": {
+    "hidden-title": "Arc-enabled SQL Server Features"
+  },
+  "apiVersion": "2022-12-01-preview"
 }
