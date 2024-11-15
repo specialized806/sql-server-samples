@@ -6,7 +6,6 @@ param (
     [string]$propertiesJSON = @"
 {
     "backupPolicy": null,
-    "upgradeLockedUntil": null,
     "monitoring": {
         "enabled": false
     },
