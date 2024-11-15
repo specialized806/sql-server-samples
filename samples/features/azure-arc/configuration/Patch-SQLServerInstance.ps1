@@ -1,5 +1,6 @@
 param (
-    [string]$resourceGroupName = 'myResourceGroup',
+    [string]$resourceGroupName = '',
+    [Parameter(Mandatory=$true)]
     [string]$subscriptionId = '00000000-0000-0000-0000-000000000000',
     [switch]$WhatIf = $false,
     [string]$propertiesJSON = @"
