@@ -30,9 +30,9 @@ if ([string]::IsNullOrEmpty($resourceGroupName) -or [string]::IsNullOrEmpty($sub
 
 $query = @"
 Resources 
-| where type == 'microsoft.azurearcdata/sqlserverinstances' 
-| where resourceGroup == '$resourceGroupName' 
-| where subscriptionId == '$subscriptionId' 
+| where type =~ 'microsoft.azurearcdata/sqlserverinstances' 
+| where resourceGroup =~ '$resourceGroupName' 
+| where subscriptionId =~ '$subscriptionId' 
 | project name, resourceGroup
 "@
 
