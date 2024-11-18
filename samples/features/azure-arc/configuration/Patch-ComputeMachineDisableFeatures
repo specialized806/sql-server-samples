@@ -1,6 +1,8 @@
-$subscriptionId = ""
-$resourceGroupName = ""
-$whatIf = $null
+param (
+[string]$subscriptionId,
+[string]$resourceGroupName,
+[bool]$whatIf = $false
+)
 
 if ([string]::IsNullOrEmpty($subscriptionId)) {
     $subscriptionId = Read-Host -Prompt "Please enter the subscription ID"
