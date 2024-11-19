@@ -1,6 +1,7 @@
 param (
-[string]$subscriptionId,
 [string]$resourceGroupName,
+[Parameter(Mandatory=$true)]
+[string]$subscriptionId,
 [bool]$whatIf = $false
 )
 
@@ -8,9 +9,9 @@ if ([string]::IsNullOrEmpty($subscriptionId)) {
     $subscriptionId = Read-Host -Prompt "Please enter the subscription ID"
 }
 
-if ([string]::IsNullOrEmpty($resourceGroupName)) {
-    $resourceGroupName = Read-Host -Prompt "Please enter the resource group name"
-}
+# if ([string]::IsNullOrEmpty($resourceGroupName)) {
+#     $resourceGroupName = Read-Host -Prompt "Please enter the resource group name"
+# }
 
 if ([string]::IsNullOrEmpty($whatIf)) {
     $dryRun = Read-Host -Prompt "Would you like to run this as a dry run? (yes/no)"
@@ -21,27 +22,40 @@ if ([string]::IsNullOrEmpty($whatIf)) {
         }
 }
 
-if ([string]::IsNullOrEmpty($resourceGroupName) -or [string]::IsNullOrEmpty($subscriptionId)) {
-    Write-Host "Either the resource group or subscription ID is not specified. Please provide both to proceed."
-    exit
-} else {
-    Write-Host "Performing actions on ResourceGroup: $($resourceGroupName) in Subscription:$($subscriptionId)"
-}
+Write-Host "Resource Group Name: $resourceGroupName"
+Write-Host "Subscription ID: $subscriptionId"
+Write-Host "WhatIf: $WhatIf"
 
-$query = @"
-Resources 
-| where type =~ 'microsoft.azurearcdata/sqlserverinstances' 
-| where resourceGroup =~ '$resourceGroupName' 
-| where subscriptionId =~ '$subscriptionId' 
-| project name, resourceGroup
-"@
+if ([string]::IsNullOrEmpty($subscriptionId)) {
+    Write-Host "The subscription ID is required."
+    exit
+} 
 
 $minSupportedApiVersion = '2024-07-10'
+$query = $null
+$resources = $null
+
+if ([string]::IsNullOrEmpty($resourceGroupName)){
+    $query ="
+    Resources 
+    | where type =~ 'microsoft.azurearcdata/sqlserverinstances' 
+    | where subscriptionId =~ '$subscriptionId' 
+    | project name, resourceGroup
+    "
+} else {
+    $query ="
+    Resources 
+    | where type =~ 'microsoft.azurearcdata/sqlserverinstances' 
+    | where resourceGroup =~ '$resourceGroupName' 
+    | where subscriptionId =~ '$subscriptionId' 
+    | project name, resourceGroup
+    "
+}
 
 $resources = Search-AzGraph -Query $query
 
 if ([string]::IsNullOrEmpty($resources)) {
-    Write-Host "No resources were found in this resource group."
+    Write-Host "No SQL Server Instances were found in this scope."
     exit
 }
 
@@ -51,7 +65,7 @@ $resources = $resources | ForEach-Object {
         SqlArcResource = $_.name
     }
 }
-Write-Host $resources
+
 $arcMachineResourceIds = @()
 foreach ($resource in $resources) {
     Write-Host "ResourceGroup: $($resource.ResourceGroup), Sql Arc resource: $($resource.SqlArcResource)"
