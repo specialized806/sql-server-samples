@@ -6,13 +6,15 @@
 # If not specified, all subscriptions your role has access to are scanned.
 #
 # The script accepts the following command line parameters:
-#
+#.
 # -SubId [subscription_id] | [csv_file_name]    (Optional. Limits the scope to specific subscriptions. Accepts a .csv file with the list of subscriptions.
 #                                               If not specified all subscriptions will be scanned)
 # -ResourceGroup [resource_goup]                (Optional. Limits the scope to a specific resoure group)
 # -MachineName [machine_name]                   (Optional. Limits the scope to a specific machine)
 # -LicenseType [license_type_value]             (Optional. Sets the license type to the specified value)
-# -EnableESU  [Yes or No]                       (Optional. Enables the ESU policy the value is "Yes" or disables it if the value is "No"
+# -EnableESU  [Yes or No]                       (Optional. Enables the ESU policy if the value is "Yes" or disables it if the value is "No"
+#                                               To enable, the license type must be "Paid" or "PAYG"
+# -UsePcoreLicense  [Yes or No]                 (Optional. Enables unlimited virtualization license if the value is "Yes" or disables it if the value is "No"
 #                                               To enable, the license type must be "Paid" or "PAYG"
 # -Force                                        (Optional. Forces the chnahge of the license type to the specified value on all installed extensions.
 #                                               If Force is not specified, the -LicenseType value is set only if undefined. Ignored if -LicenseType  is not specified
@@ -35,6 +37,9 @@ param (
     [Parameter (Mandatory= $false)]
     [ValidateSet("Yes","No", IgnoreCase=$false)]
     [string] $EnableESU,
+    [Parameter (Mandatory= $false)]
+    [ValidateSet("Yes","No", IgnoreCase=$false)]
+    [string] $UsePcoreLicense,
     [Parameter (Mandatory= $false)]
     [switch] $Force
 )
@@ -243,11 +248,24 @@ foreach ($sub in $subscriptions){
                 write-host "The configured license type does not support ESUs" 
             }
         }
-
+        
+        # Enable UsePcoreLicense for qualified license types or disable 
+        if ($UsePcoreLicense) {
+            if (($settings["LicenseType"] | select-string "Paid","PAYG") -or  ($UsePcoreLicense -eq "No")) {
+                $settings["UsePhysicalCoreLicense"] = @{
+                    "IsApplied" = ($UsePcoreLicense -eq "Yes");
+                    "LastUpdatedTimestamp" = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
+                }
+                $WriteSettings = $true
+            } else {
+                write-host "The configured license type does not support ESUs" 
+            }
+        }
         If ($WriteSettings) {
-            Write-Host "Resource group: [$($r.resourceGroup)] Connected machine: [$($r.MachineName)] : License type: [$($settings["LicenseType"])] : Enable ESU: [$($settings["enableExtendedSecurityUpdates"])]"
+            
             try { 
                 Set-AzConnectedMachineExtension @setId -Settings $settings -NoWait | Out-Null
+                Write-Host "Updated -- Resource group: [$($r.resourceGroup)], Connected machine: [$($r.MachineName)]"
             } catch {
                 write-host "The request to modify the extenion object failed with the following error:"
                 write-host $_.Exception.Message
