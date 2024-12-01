@@ -58,7 +58,7 @@ The following command will scan the subscription `<sub_id>` and set the license 
 
 ## Example 3
 
-The following command will scan resource group `<resource_group_name>` in the subscription `<sub_id>` and set the license type value to "PAYG" and enable unlimited virtualization license on all servers in the specified resource group.
+The following command will scan resource group `<resource_group_name>` in the subscription `<sub_id>`, set the license type value to "PAYG" and enable unlimited virtualization license on all servers in the specified resource group.
 
 ```PowerShell
 .\modify-license-type.ps1 -SubId <sub_id> -ResourceGroup <resource_group_name> -LicenseType PAYG -UsePcoreLicense Yes -Force
