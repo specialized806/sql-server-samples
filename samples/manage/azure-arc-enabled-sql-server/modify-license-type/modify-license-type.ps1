@@ -12,9 +12,9 @@
 # -ResourceGroup [resource_goup]                (Optional. Limits the scope to a specific resoure group)
 # -MachineName [machine_name]                   (Optional. Limits the scope to a specific machine)
 # -LicenseType [license_type_value]             (Optional. Sets the license type to the specified value)
-# -EnableESU  [Yes or No]                       (Optional. Enables the ESU policy if the value is "Yes" or disables it if the value is "No"
-#                                               To enable, the license type must be "Paid" or "PAYG"
 # -UsePcoreLicense  [Yes or No]                 (Optional. Enables unlimited virtualization license if the value is "Yes" or disables it if the value is "No"
+#                                               To enable, the license type must be "Paid" or "PAYG"
+# -EnableESU  [Yes or No]                       (Optional. Enables the ESU policy if the value is "Yes" or disables it if the value is "No"
 #                                               To enable, the license type must be "Paid" or "PAYG"
 # -Force                                        (Optional. Forces the chnahge of the license type to the specified value on all installed extensions.
 #                                               If Force is not specified, the -LicenseType value is set only if undefined. Ignored if -LicenseType  is not specified
@@ -36,10 +36,10 @@ param (
     [string] $LicenseType,
     [Parameter (Mandatory= $false)]
     [ValidateSet("Yes","No", IgnoreCase=$false)]
-    [string] $EnableESU,
+    [string] $UsePcoreLicense,
     [Parameter (Mandatory= $false)]
     [ValidateSet("Yes","No", IgnoreCase=$false)]
-    [string] $UsePcoreLicense,
+    [string] $EnableESU,
     [Parameter (Mandatory= $false)]
     [switch] $Force
 )

@@ -3,7 +3,7 @@ services: Azure Arc-enabled SQL Server
 platforms: Azure
 author: anosov1960
 ms.author: sashan
-ms.date: 9/22/2023
+ms.date: 12/01/2024
 ---
 
 
@@ -31,6 +31,7 @@ The script accepts the following command line parameters:
 |-ResourceGroup |resource_group_name|Optional: Limits the scope  to a specific resource group|
 |-MachineName |machine_name|Optional: Limits the scope to a specific machine|
 |-LicenseType | "Paid", "PAYG" or "LicenseOnly"| Optional: Sets the license type to the specified value |
+|-UsePcoreLicense | "Yes", "No" | Optional. Enables unlimited virtualization license if the value is "Yes" or disables it if the value is "No". To enable, the license type must be "Paid" or "PAYG"|
 |-EnableESU | "Yes", "No" | Optional. Enables the ESU policy the value is "Yes" or disables it if the value is "No". To enable, the license type must be "Paid" or "PAYG"|
 |-Force| |Optional. Forces the change of the license type to the specified value on all installed extensions. If -Force is not specified, the -LicenseType value is set only if undefined. Ignored if -LicenseType  is not specified|
 
@@ -57,10 +58,10 @@ The following command will scan the subscription `<sub_id>` and set the license 
 
 ## Example 3
 
-The following command will scan resource group `<resource_group_name>` in the subscription `<sub_id>` and set the license type value to "PAYG" on all servers.
+The following command will scan resource group `<resource_group_name>` in the subscription `<sub_id>` and set the license type value to "PAYG" and enable unlimited virtualization license on all servers in the specified resource group.
 
 ```PowerShell
-.\modify-license-type.ps1 -SubId <sub_id> -ResourceGroup <resource_group_name> -LicenseType PAYG -Force
+.\modify-license-type.ps1 -SubId <sub_id> -ResourceGroup <resource_group_name> -LicenseType PAYG -UsePcoreLicense Yes -Force
 ```
 
 ## Example 4
