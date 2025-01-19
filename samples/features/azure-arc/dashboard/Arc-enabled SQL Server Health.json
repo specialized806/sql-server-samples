@@ -8,8 +8,641 @@
             "position": {
               "x": 0,
               "y": 0,
-              "colSpan": 20,
-              "rowSpan": 11
+              "colSpan": 6,
+              "rowSpan": 2
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "chartType",
+                  "isOptional": true
+                },
+                {
+                  "name": "isShared",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryId",
+                  "isOptional": true
+                },
+                {
+                  "name": "formatResults",
+                  "isOptional": true
+                },
+                {
+                  "name": "partTitle",
+                  "value": "Query 1",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryScope",
+                  "value": {
+                    "scope": 0,
+                    "values": []
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "query",
+                  "value": "resources\n| where type == \"microsoft.hybridcompute/machines\"\n| where properties.detectedProperties.mssqldiscovered =~ 'true' or properties.mssqldiscovered =~ 'true'\n| summarize SqlServerMachines = count()",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/ArgQuerySingleValueTile",
+              "settings": {},
+              "partHeader": {
+                "title": "Machines Hosting SQL Server",
+                "subtitle": "The count of machines that have SQL Server installed"
+              }
+            }
+          },
+          {
+            "position": {
+              "x": 6,
+              "y": 0,
+              "colSpan": 6,
+              "rowSpan": 2
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "chartType",
+                  "isOptional": true
+                },
+                {
+                  "name": "isShared",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryId",
+                  "isOptional": true
+                },
+                {
+                  "name": "formatResults",
+                  "isOptional": true
+                },
+                {
+                  "name": "partTitle",
+                  "value": "Query 1",
+                  "isOptional": true
+                },
+                {
+                  "name": "query",
+                  "value": "resources\n| where type == \"microsoft.hybridcompute/machines/extensions\" \n| where properties.type in (\"WindowsAgent.SqlServer\", \"LinuxAgent.SqlServer\")\n| summarize SQLServerExtensions = count()",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryScope",
+                  "value": {
+                    "scope": 0,
+                    "values": []
+                  },
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/ArgQuerySingleValueTile",
+              "settings": {},
+              "partHeader": {
+                "title": "SQL Server Extensions",
+                "subtitle": "The count of SQL Server extensions.  Should be the same as the count of Machines Hosting SQL Server."
+              }
+            }
+          },
+          {
+            "position": {
+              "x": 12,
+              "y": 0,
+              "colSpan": 6,
+              "rowSpan": 2
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "chartType",
+                  "isOptional": true
+                },
+                {
+                  "name": "isShared",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryId",
+                  "isOptional": true
+                },
+                {
+                  "name": "formatResults",
+                  "isOptional": true
+                },
+                {
+                  "name": "partTitle",
+                  "value": "Query 1",
+                  "isOptional": true
+                },
+                {
+                  "name": "query",
+                  "value": "resources\n| where type == \"microsoft.hybridcompute/machines/extensions\"\n| where properties.type in (\"WindowsAgent.SqlServer\", \"LinuxAgent.SqlServer\")\n| extend targetMachineName = tolower(tostring(split(id, '/')[8]))\n| join kind=leftouter (\n    resources\n    | where type == \"microsoft.hybridcompute/machines\"\n    | project machineId = id, MachineName = name, subscriptionId, resourceGroup, MachineStatus = properties.status, MachineProvisioningStatus = properties.provisioningState, MachineErrors = properties.errorDetails\n) on $left.targetMachineName == $right.MachineName and $left.resourceGroup == $right.resourceGroup and $left.subscriptionId == $right.subscriptionId\n| extend extractedDate = todatetime(extract(\"timestampUTC : (\\\\d{4}-\\\\d{2}-\\\\d{2})\", 1, tostring(properties.instanceView.status.message)))\n| extend isNotInDateRange = extractedDate < ago(3d) or isnull(extractedDate)\n| where properties.instanceView.status.message !contains \"SQL Server Extension Agent: Healthy\"\n    or isNotInDateRange\n    or properties.instanceView.status.message !contains \"uploadStatus : OK\"\n    or properties.provisioningState != \"Succeeded\"\n    or MachineStatus != \"Connected\"\n| project ID = id, MachineName, ResourceGroup = resourceGroup, SubscriptionID = subscriptionId, Location = location, \n    LastReportedExtensionHealth = iif(properties.instanceView.status.message contains \"SQL Server Extension Agent: Healthy\", \"Healthy\", \"Unhealthy\"),\n    LastExtensionUploadTimestamp = tostring(extractedDate),\n    LastExtensionUploadStatus = iif(properties.instanceView.status.message contains \"uploadStatus : OK\", \"OK\", \"Unhealthy\"),\n    ExtensionProvisioningState = properties.provisioningState,\n    MachineStatus, MachineErrors, MachineProvisioningStatus\n| project OverallHealth = iif(LastReportedExtensionHealth == \"Healthy\" and LastExtensionUploadStatus == \"OK\" and ExtensionProvisioningState == \"Succeeded\" and MachineStatus == \"Connected\" and MachineProvisioningStatus == \"Succeeded\", \"Healthy\", \"Unhealthy\")\n| where OverallHealth == \"Healthy\"\n| summarize HealthyExtensions = count()",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryScope",
+                  "value": {
+                    "scope": 0,
+                    "values": []
+                  },
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/ArgQuerySingleValueTile",
+              "settings": {},
+              "partHeader": {
+                "title": "Overall Healthy SQL Server Extensions",
+                "subtitle": "The count of overall healthy SQL Server extensions should be the same as the count of SQL Server extensions."
+              }
+            }
+          },
+          {
+            "position": {
+              "x": 0,
+              "y": 2,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "isShared",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryId",
+                  "isOptional": true
+                },
+                {
+                  "name": "formatResults",
+                  "isOptional": true
+                },
+                {
+                  "name": "partTitle",
+                  "value": "Query 1",
+                  "isOptional": true
+                },
+                {
+                  "name": "chartType",
+                  "value": 2,
+                  "isOptional": true
+                },
+                {
+                  "name": "queryScope",
+                  "value": {
+                    "scope": 0,
+                    "values": []
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "query",
+                  "value": "resources\n    | where type =~ 'microsoft.hybridcompute/machines/extensions'\n    | where properties.type in ('WindowsAgent.SqlServer','LinuxAgent.SqlServer')\n    | parse id with * '/providers/Microsoft.HybridCompute/machines/' machineName '/extensions/' *\n    | parse properties with * 'uploadStatus : ' uploadStatus ';' *\n    | project uploadStatus, subscriptionId, resourceGroup, machineName\n    | summarize count() by uploadStatus",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/ArgQueryChartTile",
+              "settings": {},
+              "partHeader": {
+                "title": "SQL Extension DPS Upload Status",
+                "subtitle": "'OK' is good.  Anaything else should be investigated."
+              }
+            }
+          },
+          {
+            "position": {
+              "x": 6,
+              "y": 2,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "isShared",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryId",
+                  "isOptional": true
+                },
+                {
+                  "name": "formatResults",
+                  "isOptional": true
+                },
+                {
+                  "name": "partTitle",
+                  "value": "Query 1",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryScope",
+                  "value": {
+                    "scope": 0,
+                    "values": []
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "chartType",
+                  "value": 2,
+                  "isOptional": true
+                },
+                {
+                  "name": "query",
+                  "value": "resources\n| where type =~ 'microsoft.hybridcompute/machines/extensions'\n| where properties.type in ('WindowsAgent.SqlServer', 'LinuxAgent.SqlServer')\n| parse id with * '/providers/Microsoft.HybridCompute/machines/' machineName '/extensions/' *\n| extend extractedDateString = extract(\"timestampUTC : (\\\\d{4}-\\\\d{2}-\\\\d{2})\", 1, tostring(properties.instanceView.status.message))\n| extend extractedDateString = case(\n    isnull(extractedDateString) or extractedDateString == '', \n    '1900-01-01T00:00:00Z', \n    extractedDateString\n)\n| extend extractedDate = todatetime(extractedDateString)\n| extend isRecent = case(extractedDate > ago(1d), \"Less than 1 day ago\", extractedDate > ago(3d), \"1 to 3 days ago\", \"More than 3 days ago\")\n| summarize count() by isRecent",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/ArgQueryChartTile",
+              "settings": {},
+              "partHeader": {
+                "title": "SQL Extension Status Update Time",
+                "subtitle": "Status should be updated every 5 minutes."
+              }
+            }
+          },
+          {
+            "position": {
+              "x": 12,
+              "y": 2,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "isShared",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryId",
+                  "isOptional": true
+                },
+                {
+                  "name": "formatResults",
+                  "isOptional": true
+                },
+                {
+                  "name": "partTitle",
+                  "value": "Query 1",
+                  "isOptional": true
+                },
+                {
+                  "name": "chartType",
+                  "value": 2,
+                  "isOptional": true
+                },
+                {
+                  "name": "queryScope",
+                  "value": {
+                    "scope": 0,
+                    "values": []
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "query",
+                  "value": "resources\n| where type == \"microsoft.hybridcompute/machines/extensions\"\n| where properties.type in (\"WindowsAgent.SqlServer\", \"LinuxAgent.SqlServer\")\n| summarize count() by tostring(properties.provisioningState)",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/ArgQueryChartTile",
+              "settings": {},
+              "partHeader": {
+                "title": "SQL Extension Provisioning State",
+                "subtitle": "Provisioning State should normally be 'Succeeded'"
+              }
+            }
+          },
+          {
+            "position": {
+              "x": 0,
+              "y": 6,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "isShared",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryId",
+                  "isOptional": true
+                },
+                {
+                  "name": "formatResults",
+                  "isOptional": true
+                },
+                {
+                  "name": "partTitle",
+                  "value": "Query 1",
+                  "isOptional": true
+                },
+                {
+                  "name": "query",
+                  "value": "resources\n| where type == \"microsoft.hybridcompute/machines/extensions\" \n| where properties.type in (\"WindowsAgent.SqlServer\", \"LinuxAgent.SqlServer\")\n| summarize count() by tostring(properties.typeHandlerVersion)",
+                  "isOptional": true
+                },
+                {
+                  "name": "chartType",
+                  "value": 2,
+                  "isOptional": true
+                },
+                {
+                  "name": "queryScope",
+                  "value": {
+                    "scope": 0,
+                    "values": []
+                  },
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/ArgQueryChartTile",
+              "settings": {},
+              "partHeader": {
+                "title": "SQL Extension Versions",
+                "subtitle": "Extension versions should be on a recent version, at least within one year.  https://aka.ms/arcsqlreleasenotes"
+              }
+            }
+          },
+          {
+            "position": {
+              "x": 6,
+              "y": 6,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "isShared",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryId",
+                  "isOptional": true
+                },
+                {
+                  "name": "formatResults",
+                  "isOptional": true
+                },
+                {
+                  "name": "partTitle",
+                  "value": "Query 1",
+                  "isOptional": true
+                },
+                {
+                  "name": "query",
+                  "value": "resources\n| where type == \"microsoft.hybridcompute/machines/extensions\"\n| where properties.type in (\"WindowsAgent.SqlServer\", \"LinuxAgent.SqlServer\")\n| project GeneralHealth = iif(properties.instanceView.status.message contains \"SQL Server Extension Agent: Healthy\", \"Healthy\", \"Unhealthy\")\n| summarize count() by GeneralHealth",
+                  "isOptional": true
+                },
+                {
+                  "name": "chartType",
+                  "value": 2,
+                  "isOptional": true
+                },
+                {
+                  "name": "queryScope",
+                  "value": {
+                    "scope": 0,
+                    "values": []
+                  },
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/ArgQueryChartTile",
+              "settings": {},
+              "partHeader": {
+                "title": "SQL Extension General Health",
+                "subtitle": "The health as reported in the extension of the extension itself."
+              }
+            }
+          },
+          {
+            "position": {
+              "x": 12,
+              "y": 6,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "isShared",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryId",
+                  "isOptional": true
+                },
+                {
+                  "name": "formatResults",
+                  "isOptional": true
+                },
+                {
+                  "name": "partTitle",
+                  "value": "Query 1",
+                  "isOptional": true
+                },
+                {
+                  "name": "query",
+                  "value": "resources\n| where type == \"microsoft.hybridcompute/machines/extensions\" \n| where properties.type in (\"WindowsAgent.SqlServer\", \"LinuxAgent.SqlServer\") \n| extend targetMachineName = tolower(tostring(split(id, '/')[8])) // Extract the machine name from the extension's id\n| join kind=leftouter (\n    resources\n    | where type == \"microsoft.hybridcompute/machines\"\n    | project machineId = id, MachineName = name, subscriptionId, LowerMachineName = tolower(name), resourceGroup , MachineStatus= properties.status , MachineProvisioningStatus= properties.provisioningState\n) on $left.targetMachineName == $right.LowerMachineName and $left.resourceGroup == $right.resourceGroup and $left.subscriptionId == $right.subscriptionId // Join Based on MachineName in the id and the machine's name, the resource group, and the subscription. This join allows us to present the data of the machine as well as the extension in the final output.\n| summarize count() by tostring(MachineProvisioningStatus)",
+                  "isOptional": true
+                },
+                {
+                  "name": "chartType",
+                  "value": 2,
+                  "isOptional": true
+                },
+                {
+                  "name": "queryScope",
+                  "value": {
+                    "scope": 0,
+                    "values": []
+                  },
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/ArgQueryChartTile",
+              "settings": {},
+              "partHeader": {
+                "title": "Machine Provisioning State",
+                "subtitle": "Machines should have a provisioning state of 'Succeeded'"
+              }
+            }
+          },
+          {
+            "position": {
+              "x": 0,
+              "y": 10,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "isShared",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryId",
+                  "isOptional": true
+                },
+                {
+                  "name": "formatResults",
+                  "isOptional": true
+                },
+                {
+                  "name": "partTitle",
+                  "value": "Query 1",
+                  "isOptional": true
+                },
+                {
+                  "name": "query",
+                  "value": "resources\n| where type == \"microsoft.hybridcompute/machines/extensions\" \n| where properties.type in (\"WindowsAgent.SqlServer\", \"LinuxAgent.SqlServer\") \n| extend targetMachineName = tolower(tostring(split(id, '/')[8])) // Extract the machine name from the extension's id\n| join kind=leftouter (\n    resources\n    | where type == \"microsoft.hybridcompute/machines\"\n    | project machineId = id, MachineName = name, subscriptionId, LowerMachineName = tolower(name), resourceGroup , MachineStatus= properties.status , MachineProvisioningStatus= properties.provisioningState\n) on $left.targetMachineName == $right.LowerMachineName and $left.resourceGroup == $right.resourceGroup and $left.subscriptionId == $right.subscriptionId // Join Based on MachineName in the id and the machine's name, the resource group, and the subscription. This join allows us to present the data of the machine as well as the extension in the final output.\n| summarize count() by tostring(MachineStatus)",
+                  "isOptional": true
+                },
+                {
+                  "name": "chartType",
+                  "value": 2,
+                  "isOptional": true
+                },
+                {
+                  "name": "queryScope",
+                  "value": {
+                    "scope": 0,
+                    "values": []
+                  },
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/ArgQueryChartTile",
+              "settings": {},
+              "partHeader": {
+                "title": "Machine Connectivity Status",
+                "subtitle": "Machines should have a state of 'Connected'"
+              }
+            }
+          },
+          {
+            "position": {
+              "x": 6,
+              "y": 10,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "isShared",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryId",
+                  "isOptional": true
+                },
+                {
+                  "name": "formatResults",
+                  "isOptional": true
+                },
+                {
+                  "name": "partTitle",
+                  "value": "Query 1",
+                  "isOptional": true
+                },
+                {
+                  "name": "chartType",
+                  "value": 2,
+                  "isOptional": true
+                },
+                {
+                  "name": "queryScope",
+                  "value": {
+                    "scope": 0,
+                    "values": []
+                  },
+                  "isOptional": true
+                },
+                {
+                  "name": "query",
+                  "value": "resources\n| where type == \"microsoft.hybridcompute/machines/extensions\" \n| where properties.type in (\"WindowsAgent.SqlServer\", \"LinuxAgent.SqlServer\") \n| extend targetMachineName = tolower(tostring(split(id, '/')[8])) // Extract the machine name from the extension's id\n| join kind=leftouter (\n    resources\n    | where type == \"microsoft.hybridcompute/machines\"\n    | project machineId = id, MachineName = name, subscriptionId, LowerMachineName = tolower(name), resourceGroup , MachineExtensionServiceStatus = properties.serviceStatuses.extensionService.status\n) on $left.targetMachineName == $right.LowerMachineName and $left.resourceGroup == $right.resourceGroup and $left.subscriptionId == $right.subscriptionId // Join Based on MachineName in the id and the machine's name, the resource group, and the subscription. This join allows us to present the data of the machine as well as the extension in the final output.\n| summarize count() by tostring(MachineExtensionServiceStatus)",
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/ArgQueryChartTile",
+              "settings": {},
+              "partHeader": {
+                "title": "Machine Extension Service Status",
+                "subtitle": "The Machine Extension Service status should be 'Running'"
+              }
+            }
+          },
+          {
+            "position": {
+              "x": 12,
+              "y": 10,
+              "colSpan": 6,
+              "rowSpan": 4
+            },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "isShared",
+                  "isOptional": true
+                },
+                {
+                  "name": "queryId",
+                  "isOptional": true
+                },
+                {
+                  "name": "formatResults",
+                  "isOptional": true
+                },
+                {
+                  "name": "partTitle",
+                  "value": "Query 1",
+                  "isOptional": true
+                },
+                {
+                  "name": "query",
+                  "value": "//Machine Guest Configuration Service Status\nresources\n| where type == \"microsoft.hybridcompute/machines/extensions\" \n| where properties.type in (\"WindowsAgent.SqlServer\", \"LinuxAgent.SqlServer\") \n| extend targetMachineName = tolower(tostring(split(id, '/')[8])) // Extract the machine name from the extension's id\n| join kind=leftouter (\n    resources\n    | where type == \"microsoft.hybridcompute/machines\"\n    | project machineId = id, MachineName = name, subscriptionId, LowerMachineName = tolower(name), resourceGroup , GuestConfigurationService = properties.serviceStatuses.guestConfigurationService.status\n) on $left.targetMachineName == $right.LowerMachineName and $left.resourceGroup == $right.resourceGroup and $left.subscriptionId == $right.subscriptionId // Join Based on MachineName in the id and the machine's name, the resource group, and the subscription. This join allows us to present the data of the machine as well as the extension in the final output.\n| summarize count() by tostring(GuestConfigurationService)",
+                  "isOptional": true
+                },
+                {
+                  "name": "chartType",
+                  "value": 2,
+                  "isOptional": true
+                },
+                {
+                  "name": "queryScope",
+                  "value": {
+                    "scope": 0,
+                    "values": []
+                  },
+                  "isOptional": true
+                }
+              ],
+              "type": "Extension/HubsExtension/PartType/ArgQueryChartTile",
+              "settings": {},
+              "partHeader": {
+                "title": "Machine Guest Configuration Service Status",
+                "subtitle": "The Machine Guest Configuration Status should be 'Running'"
+              }
+            }
+          },
+          {
+            "position": {
+              "x": 0,
+              "y": 14,
+              "colSpan": 18,
+              "rowSpan": 12
             },
             "metadata": {
               "inputs": [
