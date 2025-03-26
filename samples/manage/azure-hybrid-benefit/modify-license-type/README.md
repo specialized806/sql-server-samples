@@ -11,8 +11,7 @@ ms.date: 03/25/2025
 
 This script provides a scaleable solution to set or change the license type on all Azure SQL Servers resources in a specified scope.
 
-You can specify a single subscription to scan, or provide a list of subscriptions as a .CSV file.
-If not specified, all subscriptions your role has access to are scanned.
+By default, the script scans all subscriptions the user account has access or a .CSV file with a list of subscriptions. Alternatively, you can specify a single subscription or and a specific resource group. The sript enumerates the specific resources that have been affected by the change.
 
 # Prerequisites
 
