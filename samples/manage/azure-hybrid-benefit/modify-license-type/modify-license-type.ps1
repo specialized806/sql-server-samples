@@ -1,6 +1,6 @@
 #
 # This script provides a scalable method to switch the license type to pay-as-you-go (aka LicenseIncluded) for all SQL resources in a specific subscription or the entire tenant. By default, the script scans
-# all subscriptions the user account has access or a .CSV file with a list of subscriptions. Alternatively, you can specify a single subscription or and a specific resource group. The sripts enumerates te specific 
+# all subscriptions the user account has access or a .CSV file with a list of subscriptions. Alternatively, you can specify a single subscription or and a specific resource group. The sripts enumerates the specific 
 # resources that have been affected by the change.
 #
 # The following resources are in scope for the license utilization analysis:
