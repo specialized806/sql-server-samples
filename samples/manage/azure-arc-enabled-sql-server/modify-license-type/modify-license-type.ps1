@@ -139,6 +139,7 @@ foreach ($sub in $subscriptions) {
         {continue}
     }
 
+    # Consent tag enforcement on the CSP subscriptions
     if ($LicenseType -eq "PAYG") {
         $offers = @("MS-AZR-0145P", "MS-AZR-DE-0145P", "MS-AZR-0017G", "MS-AZR-159P", "MS-AZR-USGOV-0145P")
         $subscriptionOffers = Get-AzSubscription -SubscriptionId $sub.Id | Select-Object -ExpandProperty OfferId
