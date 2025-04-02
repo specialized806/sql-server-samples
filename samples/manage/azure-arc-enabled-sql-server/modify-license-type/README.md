@@ -16,10 +16,9 @@ If not specified, all subscriptions your role has access to are scanned.
 
 # Prerequisites
 
-- You must have at least a *Azure Connected Machine Resource Administrator* role in each subscription you modify.
+- You must have least *Azure Connected Machine Resource Administrator* role and subscription *Reader* role.
 - The Azure extension for SQL Server is updated to version 1.1.2230.58 or newer.
 - You must be connected to Azure AD and logged in to your Azure account. If your account have access to multiple tenants, make sure to log in with a specific tenant ID.
-
 
 # Launching the script
 
