@@ -50,10 +50,10 @@ The following command will scan all the subscriptions to which the user has acce
 
 ## Example 2
 
-The following command will scan the subscription `<sub_id>` and set the license type value to "Paid" on all servers.
+The following command will scan all all the subscriptions to which the user has access to, and set the license type to "PAYG" on all servers .
 
 ```PowerShell
-.\modify-license-type.ps1 -SubId <sub_id> -LicenseType Paid -Force
+.\modify-license-type.ps1 -SubId <sub_id> -LicenseType PAYG -Force
 ```
 
 ## Example 3
