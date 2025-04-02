@@ -40,7 +40,7 @@ The script accepts the following command line parameters:
 Get-AzSubscription | Export-Csv .\mysubscriptions.csv -NoTypeInformation
 ```
 > [!IMPORTANT]
-> If you are setting License type to PAYG in the CSP subscription(s), the subscription resource must have a consent tag enabling perperual pay-as-you-go billing. Without the tag, the command will fail. The consent tag is `SQLPerpetualPaygBilling`:`Enabled` and can be adding using [Azure portal](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/tag-resources-portal), [PowerShell](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/tag-resources-powershell) or [CLI](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/tag-resources-cli).
+> If you are setting License type to "PAYG" in the CSP subscription(s), the subscription resource must have a consent tag enabling perpetual pay-as-you-go billing. Without the tag, the command will fail. The consent tag is `SQLPerpetualPaygBilling`:`Enabled` and can be adding using [Azure portal](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/tag-resources-portal), [PowerShell](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/tag-resources-powershell) or [CLI](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/tag-resources-cli).
 
 ## Example 1
 
