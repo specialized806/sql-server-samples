@@ -143,9 +143,13 @@ foreach ($sub in $subscriptions) {
         $offers = @("MS-AZR-0145P", "MS-AZR-DE-0145P", "MS-AZR-0017G", "MS-AZR-159P", "MS-AZR-USGOV-0145P")
         $subscriptionOffers = Get-AzSubscription -SubscriptionId $sub.Id | Select-Object -ExpandProperty OfferId
         if ($subscriptionOffers -contains $offers) {
-            $tags = Get-AzTag -ResourceId "/subscriptions/$($sub.Id)"
-            if ($tags.Tags["SQLPerpetualPaygBilling"] -ne "Enabled") {
-                write-host "Error: Subscription $($sub.Id) does not have the consent tag 'SQLPerpetualPaygBilling' enabled."
+            if ($tags.Tags.ContainsKey("SQLPerpetualPaygBilling")) {
+                if ($tags.Tags["SQLPerpetualPaygBilling"] -ne "Enabled") {
+                    write-host "Error: Subscription $($sub.Id) has an incorrect value $($tags.Tags["SQLPerpetualPaygBilling"]) of the consent tag 'SQLPerpetualPaygBilling' ."
+                    continue
+                }
+            } else {
+                write-host "Error: Subscription $($sub.Id) does not have the consent tag 'SQLPerpetualPaygBilling'."
                 continue
             }
         }
