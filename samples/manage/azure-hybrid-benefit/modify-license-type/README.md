@@ -8,7 +8,7 @@ ms.date: 04/08/2025
 
 # Overview
 
-This Azure Runbook updates the license type for various Azure SQL resources using Azure CLI and PowerShell commands. It automates the process of modifying license settings for SQL Databases, Elastic Pools, SQL Managed Instances, SQL Instance Pools, SQL Virtual Machines, and DataFactory SSIS Integration Runtimes. The script supports targeting a single subscription, a list of subscriptions defined in a CSV file, or all accessible subscriptions. Optionally, it can also start resources that are stopped (if the -ForceStartOnResources parameter is enabled).
+This script provides a scaleable solution to change the license type of various Azure SQL resources with the selected scope. It automates the process of modifying license settings for SQL Databases, Elastic Pools, SQL Managed Instances, SQL Instance Pools, SQL Virtual Machines, and DataFactory SSIS Integration Runtimes. The script supports targeting a single subscription, a list of subscriptions defined in a CSV file, or all accessible subscriptions. Optionally, it can also start resources that are stopped (if the -ForceStartOnResources parameter is enabled).
 
 This script is designed to help administrators standardize SQL licensing across their Azure environment by automating license updates. It accepts a subscription ID or CSV file (for a list of subscriptions). If no subscription is specified, it defaults to updating resources in all accessible subscriptions.
 
