@@ -1,184 +1,427 @@
-#
-# This script provides a scalable method to switch the license type to pay-as-you-go (aka LicenseIncluded) for all SQL resources in a specific subscription or the entire tenant. By default, the script scans
-# all subscriptions the user account has access or a .CSV file with a list of subscriptions. Alternatively, you can specify a single subscription or and a specific resource group. The sripts enumerates the specific 
-# resources that have been affected by the change.
-#
-# The following resources are in scope for the license utilization analysis:
-# - Azure SQL databases (vCore-based purchasing model only)
-# - Azure SQL elastic pools (vCore-based purchasing model only)
-# - Azure SQL managed instances
-# - Azure SQL instance pools
-# - Azure Data Factory SSIS integration runtimes
-# - SQL Servers in Azure virtual machines
-#
-# The script accepts the following command line parameters:
-#
-# -SubId [subscription_id] | [csv_file_name]    (Accepts a .csv file with the list of subscriptions)
-# -ResourceGroup [resource_goup]                (Optional. Limits the scope to a specific resoure group)
-# -LicenseType [license_type_value]             (Optional. Sets the license type to the specified value. Ifnot specified, "LicenseIncluded" is set)
-# -FilePath [csv_file_name]                     (Required to save data in a .csv format. Ignored if database parameters are specified)
-#
+<#
+.SYNOPSIS
+    Updates the license type for Azure SQL resources (SQL DBs, Elastic Pools, Managed Instances, Instance Pools, SQL VMs)
+    to a specified model ("LicenseIncluded" or "BasePrice"). Optionally starts resources if needed.
+
+.DESCRIPTION
+    In a quest to bring harmony to the Azure realms, our script journeys across subscriptions,
+    updating the license types of various SQL resources. It supports processing a single subscription,
+    a CSV list of subscriptions, or all accessible subscriptions. For SQL VMs and SQL Managed Instances,
+    it can even start the resource if it's stopped (when -Force_Start_On_Resources is enabled).
+
+.PARAMETER SubId
+    A single subscription ID or a CSV file name containing a list of subscriptions.
+
+.PARAMETER ResourceGroup
+    Optional. Limit the scope to a specific resource group.
+
+.PARAMETER LicenseType
+    Optional. License type to set. Allowed values: "LicenseIncluded" (default) or "BasePrice".
+
+.PARAMETER Force_Start_On_Resources
+    Optional. If true, starts SQL VMs and SQL Managed Instances before updating their license type.
+#>
 
 param (
-    [Parameter (Mandatory= $false)]
+    [Parameter(Mandatory = $false)]
     [string] $SubId,
-    [Parameter (Mandatory= $false)]
+    
+    [Parameter(Mandatory = $false)]
     [string] $ResourceGroup,
-    [Parameter (Mandatory= $false)]
-    [ValidateSet("LicenseIncluded", "BasePrice", IgnoreCase=$false)]
-    [string] $LicenseType = "LicenseIncluded"
+    
+    [Parameter(Mandatory = $false)]
+    [ValidateSet("LicenseIncluded", "BasePrice", IgnoreCase = $false)]
+    [string] $LicenseType = "LicenseIncluded",
+    
+    [Parameter(Mandatory = $false)]
+    [bool] $Force_Start_On_Resources = $false
 )
 
-function CheckModule ($m) {
+# Suppress unnecessary logging output
+$VerbosePreference      = "SilentlyContinue"
+$DebugPreference        = "SilentlyContinue"
+$ProgressPreference     = "SilentlyContinue"
+$InformationPreference  = "SilentlyContinue"
+$WarningPreference      = "SilentlyContinue"
+function Connect-Azure {
+    <#
+    .SYNOPSIS
+        Connects to Azure using either Managed Identity or interactive user login.
 
-    # This function ensures that the specified module is imported into the session
-    # If module is already imported - do nothing
+    .DESCRIPTION
+        This function first attempts to authenticate to Azure using a Managed Identity by calling
+        Connect-AzAccount with the -Identity switch. If the Managed Identity login is successful,
+        it then connects the Azure CLI using the --identity option. If any of the Managed Identity
+        login attempts fail, the function falls back to interactive (user) login for both Azure
+        PowerShell and the Azure CLI.
 
-    if (!(Get-Module | Where-Object {$_.Name -eq $m})) {
-        # If module is not imported, but available on disk then import
-        if (Get-Module -ListAvailable | Where-Object {$_.Name -eq $m}) {
-            Import-Module $m
+    .EXAMPLE
+        PS C:\> Connect-Azure
+        Attempts to connect using Managed Identity; if not available, it will prompt for interactive login.
+    #>
+
+    # Variable to track if Managed Identity authentication was successful.
+    $ManagedIdentityLoginSuccessful = $false
+
+    Write-Output "Attempting to connect using Managed Identity for Azure PowerShell..."
+    try {
+        Connect-AzAccount -Identity -ErrorAction Stop | Out-Null
+        Write-Output "Azure PowerShell connected using Managed Identity."
+        $ManagedIdentityLoginSuccessful = $true
+    }
+    catch {
+        Write-Output "Managed Identity login failed for Azure PowerShell. Falling back to interactive login..."
+        try {
+            Connect-AzAccount -ErrorAction Stop | Out-Null
+            Write-Output "Azure PowerShell connected using interactive login."
         }
-        else {
-            # If module is not imported, not available on disk, but is in online gallery then install and import
-            if (Find-Module -Name $m | Where-Object {$_.Name -eq $m}) {
-                Install-Module -Name $m -Force -Verbose -Scope CurrentUser
-                Import-Module $m
+        catch {
+            Write-Error "Failed to connect to Azure PowerShell: $_"
+            return
+        }
+    }
+
+    # Attempt Azure CLI connection.
+    if ($ManagedIdentityLoginSuccessful) {
+        Write-Output "Attempting to connect Azure CLI using Managed Identity..."
+        try {
+            az login --identity --output none
+            Write-Output "Azure CLI connected using Managed Identity."
+        }
+        catch {
+            Write-Output "Managed Identity login failed for Azure CLI. Falling back to interactive login..."
+            try {
+                az login --output none
+                Write-Output "Azure CLI connected using interactive login."
+            }
+            catch {
+                Write-Error "Failed to connect to Azure CLI interactively: $_"
+            }
+        }
+    }
+    else {
+        Write-Output "Attempting to connect Azure CLI using interactive login..."
+        try {
+            az login --output none
+            Write-Output "Azure CLI connected using interactive login."
+        }
+        catch {
+            Write-Error "Failed to connect to Azure CLI interactively: $_"
+        }
+    }
+}
+
+# Initialize final status and report counters.
+$finalStatus = @()
+$report = @{
+    "SQLVMUpdated"        = @()
+    "SQLMIUpdated"        = @()
+    "SQLDBUpdated"        = @()
+    "ElasticPoolUpdated"  = @()
+    "InstancePoolUpdated" = @()
+    "ADFSSISUpdated" = @()
+}
+
+# Ensure connection with both PowerShell and CLI.
+Connect-Azure
+$context = Get-AzContext -ErrorAction SilentlyContinue
+Write-Output "Connected to Azure as: $($context.Account)"
+
+# Map License Types for SQL VMs: LicenseIncluded -> PAYG, BasePrice -> AHUB.
+$SqlVmLicenseType = if ($LicenseType -eq "LicenseIncluded") { "PAYG" } else { "AHUB" }
+
+# Determine the subscriptions to process: CSV file, single subscription, or all accessible subscriptions.
+try {
+    if ($SubId -and $SubId -like "*.csv") {
+        Write-Output "Gathering subscriptions from CSV file: $SubId"
+        $subscriptions = Import-Csv -Path $SubId
+    }
+    elseif ($SubId) {
+        Write-Output "Gathering subscription details for: $SubId"
+        $subscriptions = @(az account show --subscription $SubId --output json | ConvertFrom-Json)
+    }
+    else {
+        Write-Output "Gathering all accessible subscriptions..."
+        $subscriptions = az account list --output json | ConvertFrom-Json
+    }
+}
+catch {
+    Write-Error "Error determining subscriptions: $_"
+    exit 1
+}
+
+# Build resource group filter if specified.
+$rgFilter = if ($ResourceGroup) { "resourceGroup=='$ResourceGroup'" } else { "" }
+$scriptStartTime = Get-Date
+Write-Output "Our adventure begins at: $scriptStartTime`n"
+
+# Process each subscription.
+foreach ($sub in $subscriptions) {
+    try {
+        Write-Output "===== Entering the realm of Subscription: $($sub.name) ====="
+        Write-Output "Switching context to subscription: $($sub.name)"
+        az account set --subscription $sub.id
+
+        # --- Section: Update SQL Virtual Machines ---
+        try {
+            Write-Output "Seeking SQL Virtual Machines that require a license update..."
+            $sqlVmQuery = if ($rgFilter) {
+                "[?sqlServerLicenseType!='${SqlVmLicenseType}' && $rgFilter]"
             }
             else {
-                # If module is not imported, not available and not in online gallery then abort
-                write-host "Module $m not imported, not available and not in online gallery, exiting."
-                EXIT 1
+                "[?sqlServerLicenseType!='${SqlVmLicenseType}']"
             }
-        }
-    }
-}
+            $sqlVMs = az sql vm list --query $sqlVmQuery -o json | ConvertFrom-Json
+            $sqlVmsToUpdate = [System.Collections.ArrayList]::new()
 
-#
-# Suppress warnings
-#
-Update-AzConfig -DisplayBreakingChangeWarning $false
-
-$requiredModules = @(
-    "Az.Accounts",
-    "Az.Compute",
-    "Az.DataFactory",
-    "Az.Resources",
-    "Az.Sql",
-    "Az.SqlVirtualMachine"
-)
-$requiredModules | Foreach-Object {CheckModule $_}
-
-# Subscriptions to scan
-
-$tenantID = (Get-AzureADTenantDetail).ObjectId
-
-if ($SubId -like "*.csv") {
-    $subscriptions = Import-Csv $SubId
-}elseif($SubId -ne "") {
-    $subscriptions = [PSCustomObject]@{SubscriptionId = $SubId} | Get-AzSubscription -TenantID $tenantID
-} else {
-    $subscriptions = Get-AzSubscription -TenantID $tenantID
-}
-
-# Record the start time
-$startTime = Get-Date
-Write-Host ("Script execution started at: $startTime")
-
-# Calculate usage for each subscription
-
-foreach ($sub in $subscriptions) {
-
-    if ($sub.State -ne "Enabled") { continue }
-
-    try {
-        Set-AzContext -SubscriptionId $sub.Id
-    } catch {
-        write-host "Invalid subscription: " $sub.Id
-        continue
-    }
-
-    # Get the resource groups 
-    if ($ResourceGroup) {
-        $rgs = Get-AzResourceGroup -Name $ResourceGroup
-    } else {
-        $rgs = Get-AzResourceGroup
-    }
-
-    foreach ($rg in $rgs) {
-        # Get all logical servers
-        $servers = Get-AzSqlServer -ResourceGroupName $rg.ResourceGroupName
-
-        # Scan all vCore-based SQL database resources in the subscription
-        $servers | Get-AzSqlDatabase | Where-Object { $_.SkuName -ne "ElasticPool" -and $_.Edition -in @("GeneralPurpose", "BusinessCritical", "Hyperscale") } | ForEach-Object {
-            if ($_.LicenseType -ne $LicenseType) {
-                Set-AzSqlDatabase -ResourceGroupName $_.ResourceGroupName -ServerName $_.ServerName -DatabaseName $_.DatabaseName -LicenseType $LicenseType
-                Write-Host ([Environment]::NewLine + "-- Database $_.DatabaseName is set to $LicenseType")
-            }
-        }
-        [system.gc]::Collect()
-
-        # Scan all vCore-based SQL elastic pool resources in the subscription
-        $servers | Get-AzSqlElasticPool | Where-Object { $_.Edition -in @("GeneralPurpose", "BusinessCritical", "Hyperscale") } | ForEach-Object {
-            if ($_.LicenseType -ne $LicenseType) {
-                Set-AzSqlElasticPool -ResourceGroupName $_.ResourceGroupName -ServerName $_.ServerName -ElasticPoolName $_.ElasticPoolName -LicenseType $LicenseType
-                Write-Host ([Environment]::NewLine + "-- ElasticPool $_.ElasticPoolName is set to $LicenseType")
-            }
-        } 
-        [system.gc]::Collect()
-
-        # Scan all SQL managed instance resources in the subscription
-        Get-AzSqlInstance | Where-Object { $_.InstancePoolName -eq $null } | ForEach-Object {
-            if ($_.LicenseType -ne $LicenseType) {
-                Set-AzSqlInstance -ResourceGroupName $_.ResourceGroupName -ServerName $_.ServerName -InstanceName $_.InstanceName -LicenseType $LicenseType
-                Write-Host ([Environment]::NewLine + "-- Instance $_.InstanceName is set to $LicenseType")
-            }      
-        }
-        [system.gc]::Collect()
-
-        # Scan all instance pool resources in the subscription
-        Get-AzSqlInstancePool | Foreach-Object {
-            if ($_.LicenseType -ne $LicenseType) {
-                Set-AzSqlInstancePool -ResourceGroupName $_.ResourceGroupName -ServerName $_.ServerName -InstanceName $_.InstanceName -LicenseType $LicenseType
-                Write-Host ([Environment]::NewLine + "-- InstancePool $_.InstanceName is set to $LicenseType")
-            }
-        }
-        [system.gc]::Collect()
-
-        # Scan all SSIS integration runtime resources in the subscription
-        Get-AzDataFactoryV2IntegrationRuntime | Where-Object { $_.State -eq "Started" -and $_.NodeSize -ne $null } | ForEach-Object {
-            if ($_.LicenseType -ne $LicenseType) {
-                # Set the license type to $LicenseType
-                Set-AzDataFactoryV2IntegrationRuntime -ResourceGroupName $_.ResourceGroupName -DataFactoryName $_.DataFactoryName -Name $_.Name -LicenseType $LicenseType
-                Write-Host ([Environment]::NewLine + "-- DataFactory $_.DataFactoryName is set to $LicenseType")
-            }
-        }
-        [system.gc]::Collect()
-
-        # Scan all SQL VMs in the subscription
-        Get-AzVM | Where-Object { $_.StorageProfile.ImageReference.Offer -like "*sql*" -and $_.ProvisioningState -eq "Succeeded" } | ForEach-Object {
-            $vmName = $_.Name
-            $resourceGroupName = $_.ResourceGroupName
-        
-            # Get the SQL configuration for the VM
-            $sqlConfig = Get-AzVMExtension -ResourceGroupName $resourceGroupName -VMName $vmName -Name "SqlIaaSAgent"
-            
-            if ($sqlConfig -ne $null) {
-                $licenseType = $sqlConfig.Settings.LicenseType
-        
-                if ($licenseType -ne $LicenseType) {
-                    # Set the license type to $LicenseType
-                    Set-AzVMExtension -ResourceGroupName $resourceGroupName -VMName $vmName -Name "SqlIaaSAgent" -Publisher "Microsoft.SqlServer.Management" -ExtensionType "SqlIaaSAgent" -TypeHandlerVersion "1.5" -Settings @{ "LicenseType" = $LicenseType }
-                    Write-Host ([Environment]::NewLine + "-- SQL VM $vmName is set to $LicenseType")
+            foreach ($sqlvm in $sqlVMs) {
+                $vmStatus = az vm get-instance-view --resource-group $sqlvm.resourceGroup --name $sqlvm.name --query "{Name:name, ResourceGroup:resourceGroup, PowerState:instanceView.statuses[?starts_with(code, 'PowerState/')].displayStatus | [0]}" -o json | ConvertFrom-Json
+                if ($vmStatus.PowerState -eq "VM running") {
+                    Write-Output "Updating SQL VM '$($sqlvm.name)' in RG '$($sqlvm.resourceGroup)' to license type '$SqlVmLicenseType'..."
+                    $result = az sql vm update -n $sqlvm.name -g $sqlvm.resourceGroup --license-type $SqlVmLicenseType -o json | ConvertFrom-Json
+                    $finalStatus += $result
+                    $report["SQLVMUpdated"] += $sqlvm.name
                 }
-        
+                else {
+                    if ($Force_Start_On_Resources) {
+                        Write-Output "SQL VM '$($sqlvm.name)' is not running. Forcing start to update license..."
+                        az vm start --resource-group $sqlvm.resourceGroup --name $sqlvm.name --no-wait yes
+                        $sqlVmsToUpdate.Add($sqlvm) | Out-Null
+                    }
+                }
             }
         }
-        [system.gc]::Collect()
+        catch {
+            Write-Error "An error occurred while updating SQL VMs: $_"
+        }
 
+        # --- Section: Update SQL Managed Instances (Stopped then Ready) ---
+        $sqlMIsToUpdate = [System.Collections.ArrayList]::new()
+        try {
+            if ($Force_Start_On_Resources) {
+                Write-Output "Seeking SQL Managed Instances that are stopped and require an update..."
+                $miQuery = if ($rgFilter) {
+                    "[?licenseType!='${LicenseType}' && state!='Ready' && $rgFilter].{Name:name, State:state, ResourceGroup:resourceGroup}"
+                }
+                else {
+                    "[?licenseType!='${LicenseType}' && state!='Ready'].{Name:name, State:state, ResourceGroup:resourceGroup}"
+                }
+                $offSQLMIs = az sql mi list --query $miQuery -o json | ConvertFrom-Json
+                foreach ($mi in $offSQLMIs) {
+                    if ($mi.State -eq "Stopped") {
+                        Write-Output "Starting SQL Managed Instance '$($mi.Name)' in RG '$($mi.ResourceGroup)'..."
+                        az sql mi start --mi $mi.Name -g $mi.ResourceGroup --no-wait yes
+                    }
+                    $sqlMIsToUpdate.Add($mi) | Out-Null
+                }
+            }
+
+            Write-Output "Processing SQL Managed Instances that are running..."
+            $miRunningQuery = if ($rgFilter) {
+                "[?licenseType!='${LicenseType}' && state=='Ready' && $rgFilter]"
+            }
+            else {
+                "[?licenseType!='${LicenseType}' && state=='Ready']"
+            }
+            $runningMIs = az sql mi list --query $miRunningQuery -o json | ConvertFrom-Json
+            foreach ($mi in $runningMIs) {
+                Write-Output "Updating SQL Managed Instance '$($mi.name)' in RG '$($mi.resourceGroup)' to license type '$LicenseType'..."
+                $result = az sql mi update --name $mi.name --resource-group $mi.resourceGroup --license-type $LicenseType -o json | ConvertFrom-Json
+                $finalStatus += $result
+                $report["SQLMIUpdated"] += $mi.name
+            }
+        }
+        catch {
+            Write-Error "An error occurred while updating SQL Managed Instances: $_"
+        }
+
+        # --- Section: Update SQL Databases and Elastic Pools ---
+        try {
+            Write-Output "Querying SQL Servers within this subscription..."
+            $serverQuery = if ($rgFilter) { "[?$rgFilter]" } else { "[]" }
+            $servers = az sql server list --query $serverQuery -o json | ConvertFrom-Json
+
+            foreach ($server in $servers) {
+                # Update SQL Databases
+                Write-Output "Scanning SQL Databases on server '$($server.name)'..."
+                $dbs = az sql db list --resource-group $server.resourceGroup --server $server.name --query "[?licenseType!='$($LicenseType)' && licenseType!=null]" -o json | ConvertFrom-Json
+                foreach ($db in $dbs) {
+                    Write-Output "Updating SQL Database '$($db.name)' on server '$($server.name)' to license type '$LicenseType'..."
+                    $result = az sql db update --name $db.name --server $server.name --resource-group $server.resourceGroup --set licenseType=$LicenseType -o json | ConvertFrom-Json
+                    $finalStatus += $result
+                    $report["SQLDBUpdated"] += $db.name
+                }
+
+                # Update Elastic Pools
+                try {
+                    Write-Output "Scanning Elastic Pools on server '$($server.name)'..."
+                    $elasticPools = az sql elastic-pool list --resource-group $server.resourceGroup --server $server.name --query "[?licenseType!='$($LicenseType)' && licenseType!=null]" --only-show-errors -o json | ConvertFrom-Json
+                    foreach ($pool in $elasticPools) {
+                        Write-Output "Updating Elastic Pool '$($pool.name)' on server '$($server.name)' to license type '$LicenseType'..."
+                        $result = az sql elastic-pool update --name $pool.name --server $server.name --resource-group $server.resourceGroup --set licenseType=$LicenseType --only-show-errors -o json | ConvertFrom-Json -ErrorAction SilentlyContinue
+                        $finalStatus += $result
+                        $report["ElasticPoolUpdated"] += $pool.name
+                    }
+                }
+                catch {
+                    Write-Output "Encountered an issue while updating Elastic Pools on server '$($server.name)'. Continuing..."
+                }
+            }
+        }
+        catch {
+            Write-Error "An error occurred while processing SQL Databases or Elastic Pools: $_"
+        }
+
+        # --- Section: Update SQL Instance Pools ---
+        try {
+            Write-Output "Searching for SQL Instance Pools that require a license update..."
+            $instancePoolsQuery = if ($rgFilter) { "[?$rgFilter]" } else { "[]" }
+            $instancePools = az sql instance-pool list --query $instancePoolsQuery -o json | ConvertFrom-Json
+            $poolsToUpdate = $instancePools | Where-Object { $_.licenseType -ne $LicenseType }
+            foreach ($pool in $poolsToUpdate) {
+                Write-Output "Updating SQL Instance Pool '$($pool.name)' in RG '$($pool.resourceGroup)' to license type '$LicenseType'..."
+                $result = az sql instance-pool update --name $pool.name --resource-group $pool.resourceGroup --license-type $LicenseType -o json | ConvertFrom-Json
+                $finalStatus += $result
+                $report["InstancePoolUpdated"] += $pool.name
+            }
+        }
+        catch {
+            Write-Error "An error occurred while updating SQL Instance Pools: $_"
+        }
+
+        # --- Section: Update DataFactory SSIS Integration Runtimes ---
+        try {
+            Write-Output "Processing DataFactory SSIS Integration Runtime resources..."
+            Get-AzDataFactoryV2 | Where-Object { $_.ProvisioningState -eq "Succeeded" } | ForEach-Object {
+                Get-AzDataFactoryV2IntegrationRuntime -ResourceGroupName $_.ResourceGroupName -DataFactoryName $_.DataFactoryName | Where-Object { $_.Type -eq "Managed" -and $_.State -ne "Starting" } | ForEach-Object {
+                    if ($_.LicenseType -ne $LicenseType) {
+                        # Update the license type to $LicenseType.
+                        $result = Set-AzDataFactoryV2IntegrationRuntime -ResourceGroupName $_.ResourceGroupName -DataFactoryName $_.DataFactoryName -Name $_.Name -LicenseType $LicenseType -Force
+                        $finalStatus += $result
+                        $report["ADFSSISUpdated"] += $_.Name                        
+                        Write-Host ([Environment]::NewLine + "-- DataFactory '$($_.DataFactoryName)' integration runtime updated to license type $LicenseType")
+                    }
+                }
+            }
+        }
+        catch {
+            Write-Error "An error occurred while updating DataFactory SSIS Integration Runtimes: $_"
+        }
+
+        # --- Section: Finalize SQL VM updates for those that were started on-demand ---
+        $sqlvm = ""
+        try {
+            $updated = $true
+            while ($sqlVmsToUpdate.Count -gt 0) {
+                $sqlvm = $sqlVmsToUpdate[0]
+                $vmStatus = az vm get-instance-view --resource-group $sqlvm.resourceGroup --name $sqlvm.name --query "{PowerState:instanceView.statuses[?starts_with(code, 'PowerState/')].displayStatus | [0]}" -o json | ConvertFrom-Json
+                if ($vmStatus.PowerState -eq "VM running") {
+                    Write-Output "Now updating SQL VM '$($sqlvm.name)' after forced start..."
+                    $result = az sql vm update -n $sqlvm.name -g $sqlvm.resourceGroup --license-type $SqlVmLicenseType -o json | ConvertFrom-Json
+                    $finalStatus += $result
+                    $report["SQLVMUpdated"] += $sqlvm.name
+                    Write-Output "Deallocating SQL VM '$($sqlvm.name)' post-update..."
+                    az vm deallocate --resource-group $sqlvm.resourceGroup --name $sqlvm.name --no-wait yes
+                    $sqlVmsToUpdate.RemoveAt(0)
+                    $updated = $true
+                }
+                else {
+                    if ($updated) {
+                        Write-Host "Waiting for SQL VM '$($sqlvm.name)' to start..."
+                        $updated = $false
+                    }
+                    else {
+                        Write-Host "." -NoNewline
+                    }
+                    Start-Sleep -Seconds 30
+                }
+            }
+        }
+        catch {
+            Write-Error "An error occurred while finalizing SQL VM updates in subscription '$($sub.name)': $sqlvm"
+        }
+
+        # --- Section: Finalize SQL Managed Instance updates for those that were forced-start ---
+        $mi = ""
+        try {
+            $updated = $true
+            while ($sqlMIsToUpdate.Count -gt 0) {
+                $mi = $sqlMIsToUpdate[0]
+                $miStatus = az sql mi show --resource-group $mi.ResourceGroup --name $mi.Name -o json | ConvertFrom-Json
+                if ($miStatus.state -eq "Ready") {
+                    Write-Output "Updating SQL Managed Instance '$($mi.Name)' after forced start..."
+                    $result = az sql mi update --name $mi.Name --resource-group $mi.ResourceGroup --license-type $LicenseType -o json | ConvertFrom-Json
+                    $finalStatus += $result
+                    $report["SQLMIUpdated"] += $mi.Name
+                    Write-Output "Stopping SQL Managed Instance '$($mi.Name)' post-update..."
+                    az sql mi stop --resource-group $mi.ResourceGroup --mi $mi.Name --no-wait yes
+                    $sqlMIsToUpdate.RemoveAt(0)
+                    $updated = $true
+                }
+                else {
+                    if ($updated) {
+                        Write-Host "Waiting for SQL Managed Instance '$($mi.Name)' to be ready..."
+                        $updated = $false
+                    }
+                    else {
+                        Write-Host "." -NoNewline
+                    }
+                    Start-Sleep -Seconds 30
+                }
+            }
+        }
+        catch {
+            Write-Error "An error occurred while finalizing SQL Managed Instance updates in subscription '$($sub.name)': $mi"
+        }
+
+    }
+    catch {
+        Write-Error "An error occurred while processing subscription '$($sub.name)': $_"
     }
 }
 
-# Record the end time
-$endTime = Get-Date
-Write-Host ("Script execution ended at: $endTime")
+$scriptEndTime = Get-Date
+$totalDuration = $scriptEndTime - $scriptStartTime
+
+# --- Final Report ---
+Write-Output "`n===== Final Report ====="
+Write-Output "Script started at: $scriptStartTime"
+Write-Output "Script ended at:   $scriptEndTime"
+Write-Output "Total duration:    $($totalDuration.ToString())"
+Write-Output "`nResources updated by category:"
+
+if ($report["SQLVMUpdated"].Count -gt 0) {
+    Write-Output "SQL VMs Updated: $($report["SQLVMUpdated"] -join ', ')"
+} else {
+    Write-Output "SQL VMs Updated: None"
+}
+
+if ($report["SQLMIUpdated"].Count -gt 0) {
+    Write-Output "SQL Managed Instances Updated: $($report["SQLMIUpdated"] -join ', ')"
+} else {
+    Write-Output "SQL Managed Instances Updated: None"
+}
+
+if ($report["SQLDBUpdated"].Count -gt 0) {
+    Write-Output "SQL Databases Updated: $($report["SQLDBUpdated"] -join ', ')"
+} else {
+    Write-Output "SQL Databases Updated: None"
+}
+
+if ($report["ElasticPoolUpdated"].Count -gt 0) {
+    Write-Output "Elastic Pools Updated: $($report["ElasticPoolUpdated"] -join ', ')"
+} else {
+    Write-Output "Elastic Pools Updated: None"
+}
+
+if ($report["InstancePoolUpdated"].Count -gt 0) {
+    Write-Output "SQL Instance Pools Updated: $($report["InstancePoolUpdated"] -join ', ')"
+} else {
+    Write-Output "SQL Instance Pools Updated: None"
+}
+
+if ($report["ADFSSISUpdated"].Count -gt 0) {
+    Write-Output "SQL ADF SSIS: $($report["ADFSSISUpdated"] -join ', ')"
+} else {
+    Write-Output "SQL ADF SSIS Updated: None"
+}
