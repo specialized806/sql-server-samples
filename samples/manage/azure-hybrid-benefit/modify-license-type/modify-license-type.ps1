@@ -4,10 +4,25 @@
     to a specified model ("LicenseIncluded" or "BasePrice"). Optionally starts resources if needed.
 
 .DESCRIPTION
-    In a quest to bring harmony to the Azure realms, our script journeys across subscriptions,
-    updating the license types of various SQL resources. It supports processing a single subscription,
-    a CSV list of subscriptions, or all accessible subscriptions. For SQL VMs and SQL Managed Instances,
-    it can even start the resource if it's stopped (when -Force_Start_On_Resources is enabled).
+    The script updates Azure SQL License types across subscriptions by modifying the license settings for a variety of SQL resources. It supports processing resources in one of the following ways:
+
+Single Subscription:
+Run against a specified subscription ID.
+CSV List of Subscriptions:
+Process multiple subscriptions provided in a CSV file.
+All Accessible Subscriptions:
+Automatically detect and update all subscriptions that you have access to.
+For specific resource types like SQL Virtual Machines and SQL Managed Instances, the script can optionally start the resource if it is in a stopped state (when the -Force_Start_On_Resources parameter is enabled) before applying the license update.
+
+The script processes several types of Azure SQL resources including:
+
+SQL Virtual Machines (SQL VMs)
+SQL Managed Instances
+SQL Databases
+Elastic Pools
+SQL Instance Pools
+DataFactory SSIS Integration Runtimes
+This automation helps ensure that your licensing configuration is consistent across your environment without manual intervention.
 
 .PARAMETER SubId
     A single subscription ID or a CSV file name containing a list of subscriptions.
