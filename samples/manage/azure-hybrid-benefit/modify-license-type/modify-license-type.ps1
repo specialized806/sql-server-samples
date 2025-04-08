@@ -12,7 +12,7 @@ CSV List of Subscriptions:
 Process multiple subscriptions provided in a CSV file.
 All Accessible Subscriptions:
 Automatically detect and update all subscriptions that you have access to.
-For specific resource types like SQL Virtual Machines and SQL Managed Instances, the script can optionally start the resource if it is in a stopped state (when the -Force_Start_On_Resources parameter is enabled) before applying the license update.
+For specific resource types like SQL Virtual Machines and SQL Managed Instances, the script can optionally start the resource if it is in a stopped state (when the -ForceStartOnResources parameter is enabled) before applying the license update.
 
 The script processes several types of Azure SQL resources including:
 
@@ -33,7 +33,7 @@ This automation helps ensure that your licensing configuration is consistent acr
 .PARAMETER LicenseType
     Optional. License type to set. Allowed values: "LicenseIncluded" (default) or "BasePrice".
 
-.PARAMETER Force_Start_On_Resources
+.PARAMETER ForceStartOnResources
     Optional. If true, starts SQL VMs and SQL Managed Instances before updating their license type.
 #>
 
@@ -49,7 +49,7 @@ param (
     [string] $LicenseType = "LicenseIncluded",
     
     [Parameter(Mandatory = $false)]
-    [bool] $Force_Start_On_Resources = $false
+    [bool] $ForceStartOnResources = $false
 )
 
 # Suppress unnecessary logging output
@@ -198,7 +198,7 @@ foreach ($sub in $subscriptions) {
                     $report["SQLVMUpdated"] += $sqlvm.name
                 }
                 else {
-                    if ($Force_Start_On_Resources) {
+                    if ($ForceStartOnResources) {
                         Write-Output "SQL VM '$($sqlvm.name)' is not running. Forcing start to update license..."
                         az vm start --resource-group $sqlvm.resourceGroup --name $sqlvm.name --no-wait yes
                         $sqlVmsToUpdate.Add($sqlvm) | Out-Null
@@ -213,7 +213,7 @@ foreach ($sub in $subscriptions) {
         # --- Section: Update SQL Managed Instances (Stopped then Ready) ---
         $sqlMIsToUpdate = [System.Collections.ArrayList]::new()
         try {
-            if ($Force_Start_On_Resources) {
+            if ($ForceStartOnResources) {
                 Write-Output "Seeking SQL Managed Instances that are stopped and require an update..."
                 $miQuery = if ($rgFilter) {
                     "[?licenseType!='${LicenseType}' && state!='Ready' && $rgFilter].{Name:name, State:state, ResourceGroup:resourceGroup}"
