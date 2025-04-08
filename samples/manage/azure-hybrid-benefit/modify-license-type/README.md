@@ -28,12 +28,12 @@ It uses managed identity authentication (via Connect-AzAccount -Identity and az 
 # Required Permissions
 The automation account needs to have the bellow permissions in order to be able to successfully run the Runbook and update all the SQL Server resources license type:
 
-1. **Azure SQL Databases**: *SQL DB Contributor role*. 
-1. **Azure SQL Elastic Pools**: *SQL DB Contributor*
-1. **Azure SQL Managed Instances**: *SQL Managed Instance Contributor*
-1. **Azure SQL Instance Pools**: *SQL Managed Instance Contributor*
-1. **Azure Data Factory SSIS Integration Runtimes**: *Data Factory Contributor role*.
-1. **SQL Servers in Azure Virtual Machines**: *Virtual Machine Contributor role*. 
+1. **SQL DB Contributor**: *SQL DB Contributor role*. 
+1. **SQL Managed Instance Contributor**: *SQL Managed Instance Contributor*
+1. **SQL Server Contributor**: *SQL Managed Instance Contributor*
+1. **Data Factory Contributor**: *Data Factory Contributor role*.
+1. **Virtual Machine Contributor**: *Virtual Machine Contributor role*. 
+
 
 A *Subscription Contributor* role has sufficient permissions to mdify any of the above resources. 
 
