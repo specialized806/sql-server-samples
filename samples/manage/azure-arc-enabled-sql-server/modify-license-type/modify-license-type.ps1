@@ -52,52 +52,82 @@ function ConvertTo-Hashtable {
         $InputObject
     )
     process {
+        ## Return null if the input is null. This can happen when calling the function
+        ## recursively and a property is null
         if ($null -eq $InputObject) {
             return $null
         }
-        if ($InputObject -is [System.Collections.ICollection]) {
+        ## Check if the input is an array or collection. If so, we also need to convert
+        ## those types into hash tables as well. This function will convert all child
+        ## objects into hash tables (if applicable)
+        if ($InputObject -is [System.Collections.IEnumerable] -and $InputObject -isnot [string]) {
+            $collection = @(
+                foreach ($object in $InputObject) {
+                    ConvertTo-Hashtable -InputObject $object
+                }
+            )
+            ## Return the array but don't enumerate it because the object may be pretty complex
+            Write-Output -NoEnumerate $collection
+        } elseif ($InputObject -is [psobject]) {
+            ## If the object has properties that need enumeration, cxonvert it to its own hash table and return it
             $hash = @{}
-            foreach ($property in $InputObject) {
+            foreach ($property in $InputObject.PSObject.Properties) {
                 $hash[$property.Name] = ConvertTo-Hashtable -InputObject $property.Value
             }
             $hash
         } else {
+            ## If the object isn't an array, collection, or other object, it's already a hash table
+            ## So just return it.
             $InputObject
         }
     }
 }
 
-function LoadModule {
+# This function checks if the specified module is imported into the session and if not installes and/or imports it
+function LoadModule
+{
     param (
         [parameter(Mandatory = $true)][string] $name
     )
 
     $retVal = $true
 
-    if (!(Get-Module -Name $name)) {
+    if (!(Get-Module -Name $name))
+    {
         $retVal = Get-Module -ListAvailable | Where-Object {$_.Name -eq $name}
 
-        if ($retVal) {
-            try {
+        if ($retVal)
+        {
+            try
+            {
                 Import-Module $name -ErrorAction SilentlyContinue
             }
-            catch {
-                write-host "The request to load module $($name) failed with the following error:"
+            catch
+            {
+                write-host "The request to lload module $($name) failed with the following error:"
                 write-host $_.Exception.Message                
                 $retVal = $false
             }
-        } else {
+        }
+        else {
+
+            # If module is not imported, not available on disk, but is in online gallery then install and import
             if (Find-Module -Name $name) {
                 Install-Module -Name $name -Force -Verbose -Scope CurrentUser
-                try {
-                    Import-Module $name -ErrorAction SilentlyContinue
+                try
+                {
+                Import-Module $name -ErrorAction SilentlyContinue
                 }
-                catch {
+                catch
+                {
                     write-host "The request to load module $($name) failed with the following error:"
                     write-host $_.Exception.Message                
                     $retVal = $false
                 }
-            } else {
+            }
+            else {
+
+                # If module is not imported, not available and not in online gallery then abort
                 write-host "Module $($name) not imported, not available and not in online gallery, exiting."
                 EXIT 1
             }
@@ -107,8 +137,12 @@ function LoadModule {
     return $retVal
 }
 
+#
+# Suppress warnings
+#
 Update-AzConfig -DisplayBreakingChangeWarning $false
 
+# Load required modules
 $requiredModules = @(
     "AzureAD",    
     "Az.Accounts",
@@ -117,19 +151,25 @@ $requiredModules = @(
 )
 $requiredModules | Foreach-Object {LoadModule $_}
 
+# Subscriptions to scan
+
 $tenantID = (Get-AzureADTenantDetail).ObjectId
 
 if ($SubId -like "*.csv") {
     $subscriptions = Import-Csv $SubId
-}elseif($SubId -ne "") {
+}elseif($SubId -ne ""){
     $subscriptions = [PSCustomObject]@{SubscriptionId = $SubId} | Get-AzSubscription -TenantID $tenantID
-}else {
+}else{
     $subscriptions = Get-AzSubscription -TenantID $tenantID
 }
 
+
 Write-Host ([Environment]::NewLine + "-- Scanning subscriptions --")
 
-foreach ($sub in $subscriptions) {
+# Scan arc-enabled servers in each subscription
+
+foreach ($sub in $subscriptions){
+
     if ($sub.State -ne "Enabled") {continue}
 
     try {
@@ -137,23 +177,6 @@ foreach ($sub in $subscriptions) {
     }catch {
         write-host "Invalid subscription: $($sub.Id)"
         {continue}
-    }
-
-    # Consent tag enforcement on the CSP subscriptions
-    if ($LicenseType -eq "PAYG") {
-        $offers = @("MS-AZR-0145P", "MS-AZR-DE-0145P", "MS-AZR-0017G", "MS-AZR-159P", "MS-AZR-USGOV-0145P")
-        $subscriptionOffers = Get-AzSubscription -SubscriptionId $sub.Id | Select-Object -ExpandProperty OfferId
-        if ($subscriptionOffers -contains $offers) {
-            if ($tags.Tags.ContainsKey("SQLPerpetualPaygBilling")) {
-                if ($tags.Tags["SQLPerpetualPaygBilling"] -ne "Enabled") {
-                    write-host "Error: Subscription $($sub.Id) has an incorrect value $($tags.Tags["SQLPerpetualPaygBilling"]) of the consent tag 'SQLPerpetualPaygBilling' ."
-                    continue
-                }
-            } else {
-                write-host "Error: Subscription $($sub.Id) does not have the consent tag 'SQLPerpetualPaygBilling'."
-                continue
-            }
-        }
     }
 
     $query = "
@@ -180,6 +203,7 @@ foreach ($sub in $subscriptions) {
 
     $resources = Search-AzGraph -Query "$($query)"
     foreach ($r in $resources) {
+
         $setID = @{
             MachineName = $r.MachineName
             Name = $r.extensionName
@@ -194,6 +218,7 @@ foreach ($sub in $subscriptions) {
         $settings = @{}
         $settings = $r.properties.settings | ConvertTo-Json | ConvertFrom-Json | ConvertTo-Hashtable
 
+        # set the license type or update (if -Force). ESU  must be disabled to set to LicenseOnly. 
         $LO_Allowed = (!$settings["enableExtendedSecurityUpdates"] -and !$EnableESU) -or  ($EnableESU -eq "No")
             
         if ($LicenseType) {
@@ -210,8 +235,10 @@ foreach ($sub in $subscriptions) {
                     $WriteSettings = $true
                 }
             }
+            
         }
         
+        # Enable ESU for qualified license types or disable 
         if ($EnableESU) {
             if (($settings["LicenseType"] | select-string "Paid","PAYG") -or  ($EnableESU -eq "No")) {
                 $settings["enableExtendedSecurityUpdates"] = ($EnableESU -eq "Yes")
@@ -222,6 +249,7 @@ foreach ($sub in $subscriptions) {
             }
         }
         
+        # Enable UsePcoreLicense for qualified license types or disable 
         if ($UsePcoreLicense) {
             if (($settings["LicenseType"] | select-string "Paid","PAYG") -or  ($UsePcoreLicense -eq "No")) {
                 $settings["UsePhysicalCoreLicense"] = @{
@@ -234,14 +262,17 @@ foreach ($sub in $subscriptions) {
             }
         }
         If ($WriteSettings) {
+            
             try { 
-                Set-AzConnectedMachineExtension @setID -Settings $settings -NoWait | Out-Null
+                Set-AzConnectedMachineExtension @setId -Settings $settings -NoWait | Out-Null
                 Write-Host "Updated -- Resource group: [$($r.resourceGroup)], Connected machine: [$($r.MachineName)]"
             } catch {
-                write-host "The request to modify the extension object failed with the following error:"
+                write-host "The request to modify the extenion object failed with the following error:"
                 write-host $_.Exception.Message
                 {continue}
             }
         }
     }
 }
+
+    
