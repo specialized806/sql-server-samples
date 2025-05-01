@@ -15,15 +15,10 @@ If not specified, all subscriptions your role has access to are scanned.
 
 ## Prerequisites
 
-- You must have at least a *Azure Connected Machine Resource Administrator* role in each subscription you modify.
-- The Azure extension for SQL Server is updated to version 1.1.2230.58 or newer.
+- PowerShell 5+ 
+- You must have at least a *Contributor* RBAC role in each subscription you modify.
+- You must have a *Tag Contributor* *Contributor* RBAC role in each subscription you modify.
 - You must be connected to Azure AD and logged in to your Azure account. If your account have access to multiple tenants, make sure to log in with a specific tenant ID.
-
-## Prerequisites
-
-- **PowerShell 5+.**
-- **User running needs to be Azure Subscription owner or contributor to be able to run the script.**  
-
 
 ---
 
@@ -39,6 +34,7 @@ The script accepts the following command line parameters:
 |`-UsePcoreLicense` | `Yes`, `No` |*Optional*. Passed to Arc script to control PCore licensing behavior. Set to `No` if not specified.|
 |`-AutomationAccount`| `<name>`|*Required* if `-RunAt` is specified. The script will automatically create an automation account with this name unless one with this name alreday exists. It will be used for the “General” runbook import operation. |
 |`-Location`|`<region>`|*Required* if `-RunAt` is specified. Azure region for the “General” runbook import operation.|
+|`-ExclusionTag`|`<name:value>`|*Optional*. Specifies the tag name and value to exclude the tagged offline VMs from the forced activation during the transition |
 
 <sup>1</sup>You can create a .csv file using the following command and then edit to remove the subscriptions you don't  want to scan.
 ```PowerShell
@@ -48,69 +44,46 @@ Get-AzSubscription | Export-Csv .\mysubscriptions.csv -NoTypeInformation
 
 ## How It Works
 
-This script internally runs the following scripts 
-   - `set-azurerunbook.ps1` - imports & publishes the helper runbook that and run if a scheduled execution is selected. 
-   - `modify-azure-sql-license-type.ps1` - configures the Azure SQL resources to pay-as-you-go
-   - `modify-license-type.ps1` configures the existing Arc SQL resources to pay-as-you-go
+- This script internally runs the following scripts
 
-The dependent scripts are downloaded to `.\PaygTransitionDownloads\`. It is created automatically if doesn't exist. The downloaded scripts are refreshed automatically on each run to ensure that the up-to-date version is used.
+   `set-azurerunbook.ps1` - imports & publishes the helper runbook that and run if a scheduled execution is selected. 
 
+   `modify-azure-sql-license-type.ps1` - configures the Azure SQL resources to pay-as-you-go
 
-## Examples
+   `modify-license-type.ps1` configures the existing Arc SQL resources to pay-as-you-go
 
-### Run Immediately
-#### Both Environments
+- The dependent scripts are downloaded to `.\PaygTransitionDownloads\`. It is created automatically if doesn't exist. The downloaded scripts are refreshed automatically on each run to ensure that the up-to-date version is used.
+- The offline Azure VMs will be reactivated for a brief period to change the configuration. If the VM should not be recativated, use `-ExclusionTag` option.
+- The subscriptions in scope of the transition will be automatically tagged with `ArcSQLServerExtensionDeployment:PAYG` to ensure that the furure SQL Servers onboarded to Azure Arc are configured to use the pay-as-you-go subscription.  For details, see [Manage automatic connection for SQL Server enabled by Azure Arc](https://learn.microsoft.com/sql/sql-server/azure-arc/manage-autodeploy).
+
+## Example 1
+
+Switch all machines to pay-as-you-go in a single subscription immediately and use unlimited virtualization.
 
 ```powershell
-.\manage-pay-transition.ps1 -Target Both -RunMode Single -cleanDownloads $true `
-    -UsePcoreLicense Yes `
-    -targetSubscription "00000000-0000-0000-0000-000000000000" `
-    -targetResourceGroup "MyRG" `
-    -AutomationAccountName "MyAutoAcct" `
+.\manage-payg-transition.ps1 `
+    -SubId "00000000-0000-0000-0000-000000000000" `
+    -UsePcoreLicense Yes 
+````
+
+## Example 2 
+
+Switch all machines to pay-as-you-go in subscriptions listed in MySusbcriptions.csv immediately without using unlimited virtualization. Exclude the VMs that tagged with `DoNotActivate:True`
+
+```powershell
+.\manage-payg-transition.ps1 `
+-SubId MySubscription.csv
+-ExclusionTag DoNotActivate:True
+````
+
+## Example 3 
+
+Switch all machines to pay-as-you-go in *all* subscriptions on May 1, 2025 at 0:00 using an automation account `MyAutomation` in `EatUS` region.
+
+```powershell
+.\manage-payg-transition.ps1 `
+    -SubId "00000000-0000-0000-0000-000000000000" `
+    -RunAt "2025-05-01 00:00:00"
+    -AutomationAccount MyAutomation
     -Location "EastUS"
-````
-
-### Arc Only, Single Run, With Cleanup
-```powershell
-.\schedule-pay-transition.ps1 `
-  -Target Arc `
-  -RunMode Single `
-  -cleanDownloads $true `
-  -UsePcoreLicense Yes `
-  -targetSubscription "11111111-1111-1111-1111-111111111111" `
-  -targetResourceGroup "ArcRG"
-````
-
-### Both Azure & Arc, Single Run, Full Parameters
-```powershell
-.\schedule-pay-transition.ps1 `
-  -Target Both `
-  -RunMode Single `
-  -cleanDownloads $true `
-  -UsePcoreLicense No `
-  -targetSubscription "22222222-2222-2222-2222-222222222222" `
-  -targetResourceGroup "HybridRG" `
-  -AutomationAccountName "MyAutomationAccount" `
-  -Location "EastUS"
-```
-### Scheduled-Run Scenarios
-
-#### Schedule Daily for Azure Only
-```powershell
-.\schedule-pay-transition.ps1 `
-  -Target Azure `
-  -RunMode Scheduled
-```
-#### Schedule Daily for Arc Only
-```powershell
-.\schedule-pay-transition.ps1 `
-  -Target Arc `
-  -RunMode Scheduled
-```
-
-#### Schedule Daily for Both Environments
-```powershell
-.\schedule-pay-transition.ps1 `
-  -Target Both `
-  -RunMode Scheduled
 ```
