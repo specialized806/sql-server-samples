@@ -1,15 +1,23 @@
-# Manage Transition to Pay-as-you-go subscription
-
-## Overview
-
-**schedule-pay-transition.ps1** is a PowerShell script that either:
-
-- **Runs once**: Downloads and invokes environment‑specific “pay transition” scripts for Azure, Arc, or both.
-- **Schedules itself**: Registers a Windows Scheduled Task to run daily at 2 AM, invoking itself in “Single” mode.
-
-It supports optional cleanup of downloaded files and passing extra parameters (target resource group, subscription, etc.) to the downstream scripts.
-
 ---
+services: Azure Arc-enabled SQL Server
+platforms: Azure
+author: anosov1960
+ms.author: sashan
+ms.date: 12/01/2024
+---
+
+# Manage Transition to Azure Pay-as-you-go subscription
+
+This script provides a scaleable solution to transition the SQL Server resources an Arc or Azure to Azure Pay-as-you-go subscription as a single step. 
+
+You can specify a single subscription to scan, or provide a list of subscriptions as a .CSV file.
+If not specified, all subscriptions your role has access to are scanned.
+
+## Prerequisites
+
+- You must have at least a *Azure Connected Machine Resource Administrator* role in each subscription you modify.
+- The Azure extension for SQL Server is updated to version 1.1.2230.58 or newer.
+- You must be connected to Azure AD and logged in to your Azure account. If your account have access to multiple tenants, make sure to log in with a specific tenant ID.
 
 ## Prerequisites
 
@@ -19,44 +27,34 @@ It supports optional cleanup of downloaded files and passing extra parameters (t
 
 ---
 
-## Parameters
+# Launching the script
 
-| Name                   | Mandatory | Type    | Acceptable Values        | Description                                                                                  |
-|------------------------|-----------|---------|--------------------------|----------------------------------------------------------------------------------------------|
-| `-Target`              | Yes       | String  | `Arc`, `Azure`, `Both`   | Which environment(s) to process.                                                             |
-| `-RunMode`             | Yes       | String  | `Single`, `Scheduled`    | `Single` runs immediately; `Scheduled` registers an NT Task to run daily at 2 AM.            |
-| `-cleanDownloads`      | No        | Boolean |                          | If `$true`, deletes the download folder after a single run.                                  |
-| `-UsePcoreLicense`     | No        | String  | `Yes`, `No`              | Passed to Arc script to control PCore licensing behavior (defaults to `No`).                 |
-| `-targetResourceGroup` | No        | String  |                          | Subscription resource group to target in downstream scripts.                                 |
-| `-targetSubscription`  | No        | String  |                          | Subscription ID to target in downstream scripts.                                             |
-| `-AutomationAccountName` | No      | String  |                          | Automation Account name for the “General” runbook import operation.                          |
-| `-Location`            | No        | String  |                          | Azure region for the “General” runbook import operation.                                     |
+The script accepts the following command line parameters:
 
----
+| **Parameter** &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  | **Value** &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&nbsp; &nbsp; &nbsp; &nbsp; | **Description** |
+|:--|:--|:--|
+|`-SubId`|`<subscription_id>` *or* `<file name>`|*Optional*: Subscription id or a .csv file with the list of subscriptions<sup>1</sup>. If not specified all subscriptions will be transitioned.|
+|`-ResourceGroup` |`<name>`|*Optional*: Limits the scope of transition to a specified resource|
+|`-RunAt` |`YYYY-MM-DD HH:MM:SS` |*Optional*: Sets the transition time in UTC time zone. E.g. 2025-05-01 14:00:00 means May 1, 2025 at 2pm UTC time. If not specified, the transition will be executed immediately.|
+|`-UsePcoreLicense` | `Yes`, `No` |*Optional*. Passed to Arc script to control PCore licensing behavior. Set to `No` if not specified.|
+|`-AutomationAccount`| `<name>`|*Required* if `-RunAt` is specified. The script will automatically create an automation account with this name unless one with this name alreday exists. It will be used for the “General” runbook import operation. |
+|`-Location`|`<region>`|*Required* if `-RunAt` is specified. Azure region for the “General” runbook import operation.|
+
+<sup>1</sup>You can create a .csv file using the following command and then edit to remove the subscriptions you don't  want to scan.
+```PowerShell
+Get-AzSubscription | Export-Csv .\mysubscriptions.csv -NoTypeInformation
+```
+
 
 ## How It Works
 
-1. **Script URL Configuration**  
-   - **General**: points to `set-azurerunbook.ps1` (imports & publishes the helper runbook).  
-   - **Azure**: points to `modify-azure-sql-license-type.ps1`.  
-   - **Arc**: points to `modify-license-type.ps1` for Arc‑enabled SQL.
+This script internally runs the following scripts 
+   - `set-azurerunbook.ps1` - imports & publishes the helper runbook that and run if a scheduled execution is selected. 
+   - `modify-azure-sql-license-type.ps1` - configures the Azure SQL resources to pay-as-you-go
+   - `modify-license-type.ps1` configures the existing Arc SQL resources to pay-as-you-go
 
-2. **Download Folder**  
-   - Creates `.\PayTransitionDownloads\` (relative) if missing.  
-   - Downloads chosen script(s) into it.
+The dependent scripts are downloaded to `.\PaygTransitionDownloads\`. It is created automatically if doesn't exist. The downloaded scripts are refreshed automatically on each run to ensure that the up-to-date version is used.
 
-3. **Invoke-RemoteScript**  
-   - Downloads a script via `Invoke-RestMethod`.  
-   - Invokes it with splatted parameter hashtable derived from `$scriptUrls[...] .Args`.
-
-4. **Modes**  
-   - **Single**: Invokes the selected scripts immediately and (optionally) cleans up.  
-   - **Scheduled**: Registers or updates a Scheduled Task (run as SYSTEM) to call itself every day at 2 AM with `-RunMode Single`.
-
-5. **Cleanup**  
-   - If `-cleanDownloads $true`, removes the download folder after a single run.
-
----
 
 ## Examples
 
@@ -64,7 +62,7 @@ It supports optional cleanup of downloaded files and passing extra parameters (t
 #### Both Environments
 
 ```powershell
-.\schedule-pay-transition.ps1 -Target Both -RunMode Single -cleanDownloads $true `
+.\manage-pay-transition.ps1 -Target Both -RunMode Single -cleanDownloads $true `
     -UsePcoreLicense Yes `
     -targetSubscription "00000000-0000-0000-0000-000000000000" `
     -targetResourceGroup "MyRG" `
