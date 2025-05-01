@@ -87,3 +87,59 @@ Switch all machines to pay-as-you-go in *all* subscriptions on May 1, 2025 at 0:
     -AutomationAccount MyAutomation
     -Location "EastUS"
 ```
+# Running the script using Cloud Shell
+
+This option is recommended because Cloud shell has the Azure PowerShell modules pre-installed and you are automatically authenticated.  Use the following steps to run the script in Cloud Shell.
+
+1. Launch the [Cloud Shell](https://shell.azure.com/). For details, [read more about PowerShell in Cloud Shell](https://aka.ms/pscloudshell/docs).
+
+1. Connect to Azure AD. You must specify `<tenant_id>` if you have access to more than one AAD tenants.
+
+    ```console
+   Connect-AzureAD -TenantID <tenant_id>
+    ```
+
+1. Upload the script to your cloud shell using the following command:
+
+    ```console
+    curl https://raw.githubusercontent.com/microsoft/sql-server-samples/master/samples/manage/azure-arc-enabled-sql-server/manage-payg-transition/manage-payg-transition.ps1 -o manage-payg-transition.ps1
+    ```
+
+1. Run the script.
+
+> [!NOTE]
+> - To paste the commands into the shell, use `Ctrl-Shift-V` on Windows or `Cmd-v` on MacOS.
+> - The script will be uploaded directly to the home folder associated with your Cloud Shell session.
+
+# Running the script from a PC
+
+
+Use the following steps to run the script in a PowerShell session on your PC.
+
+1. Copy the script to your current folder:
+
+   ```console
+    curl https://raw.githubusercontent.com/microsoft/sql-server-samples/master/samples/manage/azure-arc-enabled-sql-server/manage-payg-transition/manage-payg-transition.ps1 -o manage-payg-transition.ps1
+    ```
+
+1. Make sure the NuGet package provider is installed:
+
+    ```console
+    Set-ExecutionPolicy  -ExecutionPolicy RemoteSigned -Scope CurrentUser
+    Install-packageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Scope CurrentUser -Force
+    ```
+
+1. Make sure the the Az module is installed. For more information, see [Install the Azure Az PowerShell module](https://learn.microsoft.com/powershell/azure/install-az-ps):
+
+    ```console
+    Install-Module Az -Scope CurrentUser -Repository PSGallery -Force
+    ```
+
+1. Connect to Azure AD and log in to your Azure account. You must specify `<tenant_id>` if you have access to more than one AAD tenants.
+
+    ```console
+    Connect-AzureAD -TenantID <tenant_id>
+    Connect-AzAccount -TenantID (Get-AzureADTenantDetail).ObjectId
+    ```
+
+1. Run the script. 
