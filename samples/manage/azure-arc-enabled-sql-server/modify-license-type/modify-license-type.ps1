@@ -12,6 +12,7 @@
 # -ResourceGroup [resource_goup]                (Optional. Limits the scope to a specific resoure group)
 # -MachineName [machine_name]                   (Optional. Limits the scope to a specific machine)
 # -LicenseType [license_type_value]             (Optional. Sets the license type to the specified value)
+# -ConsentToRecurringPAYG [Yes or No]           (Optional. Consents to enabling the recurring PAYG billing. LicenseType must be "PAYG". Applies to CSP subscriptions only.
 # -UsePcoreLicense  [Yes or No]                 (Optional. Enables unlimited virtualization license if the value is "Yes" or disables it if the value is "No"
 #                                               To enable, the license type must be "Paid" or "PAYG"
 # -EnableESU  [Yes or No]                       (Optional. Enables the ESU policy if the value is "Yes" or disables it if the value is "No"
@@ -34,6 +35,8 @@ param (
     [Parameter (Mandatory= $false)]
     [ValidateSet("PAYG","Paid","LicenseOnly", IgnoreCase=$false)]
     [string] $LicenseType,
+    [ValidateSet("Yes","No", IgnoreCase=$false)]
+    [string] $ConsentToRecurringPAYG,
     [Parameter (Mandatory= $false)]
     [ValidateSet("Yes","No", IgnoreCase=$false)]
     [string] $UsePcoreLicense,
@@ -234,8 +237,7 @@ foreach ($sub in $subscriptions){
                     $settings["LicenseType"] = $LicenseType
                     $WriteSettings = $true
                 }
-            }
-            
+            }            
         }
         
         # Enable ESU for qualified license types or disable 
@@ -261,6 +263,21 @@ foreach ($sub in $subscriptions){
                 write-host "The configured license type does not support ESUs" 
             }
         }
+
+        # Add or update ConsentToRecurringPAYG setting if applicable
+        if ($ConsentToRecurringPAYG -eq "Yes") {
+            $isPayg = ($LicenseType -eq "PAYG") -or ($settings["LicenseType"] -eq "PAYG")
+            if ($isPayg) {
+                if (-not $settings.ContainsKey("ConsentToRecurringPAYG") -or -not $settings["ConsentToRecurringPAYG"]["Consented"]) {
+                    $settings["ConsentToRecurringPAYG"] = @{
+                        "Consented" = $true;
+                        "ConsentTimestamp" = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
+                    }
+                    $WriteSettings = $true
+                }
+            }
+        }
+
         If ($WriteSettings) {
             
             try { 
