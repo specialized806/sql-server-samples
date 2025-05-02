@@ -102,7 +102,7 @@ This option is recommended because Cloud shell has the Azure PowerShell modules 
 1. Upload the script to your cloud shell using the following command:
 
     ```console
-    curl https://raw.githubusercontent.com/microsoft/sql-server-samples/master/samples/manage/azure-arc-enabled-sql-server/manage-payg-transition/manage-payg-transition.ps1 -o manage-payg-transition.ps1
+    curl https://raw.githubusercontent.com/microsoft/sql-server-samples/master/samples/manage/manage-payg-transition/manage-payg-transition.ps1 -o manage-payg-transition.ps1
     ```
 
 1. Run the script.
@@ -119,7 +119,7 @@ Use the following steps to run the script in a PowerShell session on your PC.
 1. Copy the script to your current folder:
 
    ```console
-    curl https://raw.githubusercontent.com/microsoft/sql-server-samples/master/samples/manage/azure-arc-enabled-sql-server/manage-payg-transition/manage-payg-transition.ps1 -o manage-payg-transition.ps1
+    curl https://raw.githubusercontent.com/microsoft/sql-server-samples/master/samples/manage/manage-payg-transition/manage-payg-transition.ps1 -o manage-payg-transition.ps1
     ```
 
 1. Make sure the NuGet package provider is installed:
