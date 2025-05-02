@@ -31,10 +31,10 @@ The script accepts the following command line parameters:
 |`-ResourceGroup` |resource_group_name|*Optional*: Limits the scope  to a specific resource group|
 |`-MachineName` |machine_name|*Optional*: Limits the scope to a specific machine|
 |`-LicenseType` | "Paid", "PAYG" or "LicenseOnly"| *Optional*: Sets the license type to the specified value |
-|`-ConsentToRecurringPayg` | "Yes" or "No" |*Optional*. Consents to enabling the recurring PAYG billing. LicenseType must be "PAYG". Applies to CSP subscriptions only.|
+|`-ConsentToRecurringPAYG` | "Yes" or "No" |*Optional*. Consents to enabling the recurring PAYG billing. LicenseType must be "PAYG". Applies to CSP subscriptions only.|
 |`-UsePcoreLicense` | "Yes", "No" | *Optional*. Enables unlimited virtualization license if the value is "Yes" or disables it if the value is "No". To enable, the license type must be "Paid" or "PAYG"|
 |`-EnableESU` | "Yes", "No" | *Optional*. Enables the ESU policy the value is "Yes" or disables it if the value is "No". To enable, the license type must be "Paid" or "PAYG"|
-|`-Force`| |*Optional*. Forces the change of the license type to the specified value on all installed extensions. If -Force is not specified, the -LicenseType value is set only if undefined. Ignored if -LicenseType  is not specified|
+|`-Force`| |*Optional*. Forces the change of the license type to the specified value on all installed extensions. If `-Force` is not specified, the `-LicenseType` value is set only if undefined. Ignored if `-LicenseType`  is not specified|
 
 <sup>1</sup>You can create a .csv file using the following command and then edit to remove the subscriptions you don't  want to scan.
 ```PowerShell
@@ -86,7 +86,7 @@ The following command will disable ESU on all servers in the subscriptions `<sub
 The following command will scan all subscriptions in the account, set the license type value to "PAYG" and consents to enabling recurring billing on all servers in the account.
 
 ```PowerShell
-.\modify-license-type.ps1 -LicenseType PAYG -ConsentToRecurringPayg Yes -Force
+.\modify-license-type.ps1 -LicenseType PAYG -ConsentToRecurringPAYG Yes -Force
 ```
 > [!NOTE]
 > The recurring billing only supported in the CSP accounts.
