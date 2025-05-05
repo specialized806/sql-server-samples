@@ -244,7 +244,7 @@ foreach ($sub in $subscriptions){
         if ($EnableESU) {
             if (($settings["LicenseType"] | select-string "Paid","PAYG") -or  ($EnableESU -eq "No")) {
                 $settings["enableExtendedSecurityUpdates"] = ($EnableESU -eq "Yes")
-                $settings["esuLastUpdatedTimestamp"] = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
+                $settings["esuLastUpdatedTimestamp"] = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
                 $WriteSettings = $true
             } else {
                 write-host "The configured license type does not support ESUs" 
@@ -256,7 +256,7 @@ foreach ($sub in $subscriptions){
             if (($settings["LicenseType"] | select-string "Paid","PAYG") -or  ($UsePcoreLicense -eq "No")) {
                 $settings["UsePhysicalCoreLicense"] = @{
                     "IsApplied" = ($UsePcoreLicense -eq "Yes");
-                    "LastUpdatedTimestamp" = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
+                    "LastUpdatedTimestamp" = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
                 }
                 $WriteSettings = $true
             } else {
@@ -271,7 +271,7 @@ foreach ($sub in $subscriptions){
                 if (-not $settings.ContainsKey("ConsentToRecurringPAYG") -or -not $settings["ConsentToRecurringPAYG"]["Consented"]) {
                     $settings["ConsentToRecurringPAYG"] = @{
                         "Consented" = $true;
-                        "ConsentTimestamp" = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
+                        "ConsentTimestamp" = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
                     }
                     $WriteSettings = $true
                 }
