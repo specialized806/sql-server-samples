@@ -2,25 +2,34 @@
 param (
     [Parameter (Mandatory=$false)]
     [string] $SubId,
+
     [Parameter (Mandatory= $false)]
     [string] $ResourceGroup,
+
     [Parameter (Mandatory= $false)]
     [string] $MachineName,
+
     [Parameter (Mandatory= $false)]
     [ValidateSet("PAYG","Paid","LicenseOnly", IgnoreCase=$false)]
     [string] $LicenseType,
+
     [Parameter (Mandatory= $false)]
     [ValidateSet("Yes","No", IgnoreCase=$false)]
     [string] $UsePcoreLicense,
+
     [Parameter (Mandatory= $false)]
     [ValidateSet("Yes","No", IgnoreCase=$false)]
     [string] $EnableESU,
+
     [Parameter (Mandatory= $false)]
     [switch] $Force,
+
     [Parameter (Mandatory= $false)]
     [object] $ExclusionTags,
+
     [Parameter (Mandatory= $false)]
     [string] $TenantId,
+    
     [Parameter (Mandatory= $false)]
     [switch] $ReportOnly
 )
