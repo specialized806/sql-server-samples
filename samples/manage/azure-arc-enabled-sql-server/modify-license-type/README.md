@@ -6,6 +6,17 @@ ms.author: sashan
 ms.date: 05/01/2025
 ---
 
+# About this sample
+
+- **Applies to:** Arc-enabled SQL Server
+- **Workload:** n/a
+- **Programming Language:** PowerShell
+- **Authors:** Alexander (Sasha) Nosov
+- **Update history:** 
+    
+    05/01/2025 - added the consent parameter for teh CSP-managed subscriptions
+
+    05/09/2025 - added *-ReportOnly* and *-TenandId* parameters
 
 # Overview
 
