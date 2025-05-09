@@ -259,7 +259,7 @@ foreach ($sub in $subscriptions) {
             OriginalLicenseType = $settings.LicenseType
             ResourceGroup       = $setID.ResourceGroup
             Location            = $setID.Location
-            Cores               = $sqlvm.Tags["NumberOfCores"]  # Adjust if needed
+            # Cores             <To be added>
         }
 
         $excludedByTags = $false
