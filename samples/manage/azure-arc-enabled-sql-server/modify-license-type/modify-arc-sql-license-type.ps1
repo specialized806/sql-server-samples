@@ -1,4 +1,53 @@
-reportReportOn;ly
+<#
+.SYNOPSIS
+    Updates the license type for Azure Arc SQL resources to a specified license and license related options.  
+
+.DESCRIPTION
+    The script updates the license related settings of the SQL extenstion resources in a specified Entra ID tenant. You can specify a particular subscription, resource group or an individual connected machine. 
+    You can also provide a list of subscriptions as a .CSV file. 
+    By default, all subscriptions in your current tenant id are scanned.
+
+.VERSION
+    3.0.5 - Initial version.
+
+.PARAMETER SubId
+    A single subscription ID or a CSV file name containing a list of subscriptions.
+
+.PARAMETER ResourceGroup
+    Optional. Limit the scope to a specific resource group.
+
+.PARAMETER MachineName 
+    Optional. Limits the scope to a specific machine
+
+.PARAMETER LicenseType
+    Optional. License type to set. Allowed values: "PAYG", "Paid" or "LicenseOnly"
+
+.PARAMETER ConsentToRecurringPAYG 
+    Optional. Consents to enabling the recurring PAYG billing. LicenseType must be "PAYG". Applies to CSP subscriptions only.
+
+.PARAMETER UsePcoreLicense
+    Optional. Opts in to use unlimited virtualization license if the value is "Yes", or opts out if the value is "No". To opt in, the license type must be "Paid" or "PAYG"
+
+.PARAMETER EnableESU
+    Optional. Enables the ESU policy if the value is "Yes" or disables it if the value is "No". To enable, the license type must be "Paid" or "PAYG"
+
+.PARAMETER Force
+    Optional. Forces the chnahge of the license type to the specified value on all installed extensions. If not forced, the changes will apply only to the extensions where the license type is undefined.    
+
+.PARAMETER ExclusionTags
+    Optional. If specified, excludes the resources that have this tag assigned.
+
+.PARAMETER TenantId
+    Optional. If specified, this tenant id to log in both PoaerShell and CLI. Otyherwise, the current logoin context is used.
+
+.PARAMETER ReportOnly
+    Optional. If true, generates a csv file with the list of resources that are to be modified, but doesn't make the actual change.
+
+.PARAMETER UseManagedIdentity
+    Optional. If true, logs in both PoaerShell and CLI using managed identity. Required to run the script as a runbook.
+
+#>
+
 param (
     [Parameter (Mandatory=$false)]
     [string] $SubId,
@@ -31,13 +80,21 @@ param (
     [string] $TenantId,
 
     [Parameter (Mandatory= $false)]
-    [switch] $ReportOnly
+    [switch] $ReportOnly,
+   
+    [Parameter (Mandatory= $false)]
+    [switch] $UseManagedIdentity
+
 )
 
 function Connect-Azure {
     [CmdletBinding()]
     param(
-        [switch]$UseManagedIdentity
+         [Parameter (Mandatory= $true)]
+         [string] $TenantId,
+
+         [Parameter (Mandatory= $false)]
+         [switch]$UseManagedIdentity
     )
 
     # 1) Detect environment
@@ -52,78 +109,54 @@ function Connect-Azure {
     Write-Verbose "Environment detected: $envType"
 
     # 2) Ensure Az.PowerShell context
-    try {
-        $ctx = Get-AzContext -ErrorAction Stop
-        if (-not $ctx.Account) { throw }
-        Write-Output "Already connected to Azure PowerShell as: $($ctx.Account)"
+    Write-Output "Not connected to Azure PowerShell. Running Connect-AzAccount..."
+    if ($UseManagedIdentity -or $envType -eq 'AzureAutomation') {
+        $ctx = Connect-AzAccount -Tenant $TenantId -Identity -ErrorAction Stop | Out-Null
     }
-    catch {
-        Write-Output "Not connected to Azure PowerShell. Running Connect-AzAccount..."
-        if ($UseManagedIdentity -or $envType -eq 'AzureAutomation') {
-            Connect-AzAccount -Identity -ErrorAction Stop | Out-Null
-        }
-        else {
-            Connect-AzAccount -ErrorAction Stop | Out-Null
-        }
-        $ctx = Get-AzContext
-        Write-Output "Connected to Azure PowerShell as: $($ctx.Account)"
+    else {
+        $ctx = Connect-AzAccount -Tenant $TenantId -ErrorAction Stop | Out-Null
     }
+    Write-Output "Connected to Azure PowerShell as: $($ctx.Account)"
 
     # 3) Sync Azure CLI if available
     if (Get-Command az -ErrorAction SilentlyContinue) {
-        try {
-            Write-Output "Check if az CLI is loged on..."
-            $acct = az account show --output json | ConvertFrom-Json
-            Write-Output "az: $($acct)"
-            if($null -eq $acct)
-            {
-                Write-Output "Azure CLI not logged in. Running az login..."
-                if ($UseManagedIdentity -or $envType -eq 'AzureAutomation') {
-                    az login --identity | Out-Null
-                }
-                else {
-                    az login | Out-Null
-                }
-                $acct = az account show --output json | ConvertFrom-Json
-            }
+        Write-Output "Running az login..."
+        if ($UseManagedIdentity -or $envType -eq 'AzureAutomation') {
+            az login --tenant $TenantId --identity | Out-Null
         }
-        catch {
-            Write-Output "Azure CLI not logged in. Running az login..."
-            if ($UseManagedIdentity -or $envType -eq 'AzureAutomation') {
-                az login --identity | Out-Null
-            }
-            else {
-                az login | Out-Null
-            }
-            $acct = az account show --output json | ConvertFrom-Json
+        else {
+            az login --tenant $TenantId | Out-Null
         }
+        $acct = az account show --output json | ConvertFrom-Json
     }
     Write-Output "Azure CLI logged in as: $($acct.user.name)"        
 
 }
 
+
 # Convert to hashtable explicitly
 $tagTable = @{}
 if($null -ne $ExclusionTags){
-if($ExclusionTags.GetType().Name -eq "Hashtable"){
-    $tagTable = $ExclusionTags    
-}else{
-    ($ExclusionTags | ConvertFrom-Json).PSObject.Properties | ForEach-Object {
-        $tagTable[$_.Name] = $_.Value
+    if($ExclusionTags.GetType().Name -eq "Hashtable"){
+        $tagTable = $ExclusionTags    
+    }else{
+        ($ExclusionTags | ConvertFrom-Json).PSObject.Properties | ForEach-Object {
+            $tagTable[$_.Name] = $_.Value
+        }
     }
 }
-}
-
-# Ensure connection with both PowerShell and CLI.
-Connect-Azure
-$context = Get-AzContext -ErrorAction SilentlyContinue
-Write-Output "Connected to Azure as: $($context.Account)"
 
 if (-not $TenantId) {
     $TenantId = $context.Tenant.Id
     Write-Output "No TenantId provided. Using current context TenantId: $TenantId"
 } else {
     Write-Output "Using provided TenantId: $TenantId"
+}
+# Ensure connection with both PowerShell and CLI.
+if ($UseManagedIdentity) {
+    Connect-Azure ($TenantId, $UseManagedIdentity)
+}else{
+    Connect-Azure ($TenantId)
 }
 
 try{

@@ -38,6 +38,19 @@ This automation helps ensure that your licensing configuration is consistent acr
 
 .PARAMETER Force_Start_On_Resources
     Optional. If true, starts SQL VMs and SQL Managed Instances before updating their license type.
+
+.PARAMETER ExclusionTags
+    Optional. If specified, excludes the resources that have this tag assigned.
+
+.PARAMETER TenantId
+    Optional. If specified, this tenant id to log in both PoaerShell and CLI. Otyherwise, the current logoin context is used.
+
+.PARAMETER ReportOnly
+    Optional. If true, generates a csv file with the list of resources that are to be modified, but doesn't make the actual change.
+
+.PARAMETER UseManagedIdentity
+    Optional. If true, logs in both PoaerShell and CLI using managed identity. Required to run the script as a runbook.
+
 #>
 
 param (
@@ -61,7 +74,10 @@ param (
     [string] $TenantId,
 
     [Parameter (Mandatory= $false)]
-    [switch] $ReportOnly
+    [switch] $ReportOnly,
+
+    [Parameter (Mandatory= $false)]
+    [switch] $UseManagedIdentity
 )
 
 # Suppress unnecessary logging output
@@ -140,7 +156,11 @@ if (-not $TenantId) {
     Write-Output "Using provided TenantId: $TenantId"
 }
 # Ensure connection with both PowerShell and CLI.
-Connect-Azure ($TenantId)
+if ($UseManagedIdentity) {
+    Connect-Azure ($TenantId, $UseManagedIdentity)
+}else{
+    Connect-Azure ($TenantId)
+}
 
 # Map License Types for SQL VMs: LicenseIncluded -> PAYG, BasePrice -> AHUB.
 $SqlVmLicenseType = if ($LicenseType -eq "LicenseIncluded") { "PAYG" } else { "AHUB" }
