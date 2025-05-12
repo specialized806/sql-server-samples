@@ -29,7 +29,7 @@ param (
 
     [Parameter (Mandatory= $false)]
     [string] $TenantId,
-    
+
     [Parameter (Mandatory= $false)]
     [switch] $ReportOnly
 )
@@ -366,4 +366,4 @@ if ($modifiedResources.Count -gt 0) {
     Write-Output "No resources were marked for modification. No CSV generated."
 }
 
-write-Output "Arc Update Script completed"
+write-Output "Arc SQL Update Script completed"
