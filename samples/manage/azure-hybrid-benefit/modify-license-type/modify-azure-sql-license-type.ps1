@@ -74,7 +74,11 @@ $WarningPreference      = "SilentlyContinue"
 function Connect-Azure {
     [CmdletBinding()]
     param(
-        [switch]$UseManagedIdentity
+         [Parameter (Mandatory= $true)]
+         [string] $TenantId,
+
+         [Parameter (Mandatory= $false)]
+         [switch]$UseManagedIdentity
     )
 
     # 1) Detect environment
@@ -89,51 +93,25 @@ function Connect-Azure {
     Write-Verbose "Environment detected: $envType"
 
     # 2) Ensure Az.PowerShell context
-    try {
-        $ctx = Get-AzContext -ErrorAction Stop
-        if (-not $ctx.Account) { throw }
-        Write-Output "Already connected to Azure PowerShell as: $($ctx.Account)"
+    Write-Output "Not connected to Azure PowerShell. Running Connect-AzAccount..."
+    if ($UseManagedIdentity -or $envType -eq 'AzureAutomation') {
+        $ctx = Connect-AzAccount -Tenant $TenantId -Identity -ErrorAction Stop | Out-Null
     }
-    catch {
-        Write-Output "Not connected to Azure PowerShell. Running Connect-AzAccount..."
-        if ($UseManagedIdentity -or $envType -eq 'AzureAutomation') {
-            Connect-AzAccount -Identity -ErrorAction Stop | Out-Null
-        }
-        else {
-            Connect-AzAccount -ErrorAction Stop | Out-Null
-        }
-        $ctx = Get-AzContext
-        Write-Output "Connected to Azure PowerShell as: $($ctx.Account)"
+    else {
+        $ctx = Connect-AzAccount -Tenant $TenantId -ErrorAction Stop | Out-Null
     }
+    Write-Output "Connected to Azure PowerShell as: $($ctx.Account)"
 
     # 3) Sync Azure CLI if available
     if (Get-Command az -ErrorAction SilentlyContinue) {
-        try {
-            Write-Output "Check if az CLI is loged on..."
-            $acct = az account show --output json | ConvertFrom-Json
-            Write-Output "az: $($acct)"
-            if($null -eq $acct)
-            {
-                Write-Output "Azure CLI not logged in. Running az login..."
-                if ($UseManagedIdentity -or $envType -eq 'AzureAutomation') {
-                    az login --identity | Out-Null
-                }
-                else {
-                    az login | Out-Null
-                }
-                $acct = az account show --output json | ConvertFrom-Json
-            }
+        Write-Output "Running az login..."
+        if ($UseManagedIdentity -or $envType -eq 'AzureAutomation') {
+            az login --tenant $TenantId --identity | Out-Null
         }
-        catch {
-            Write-Output "Azure CLI not logged in. Running az login..."
-            if ($UseManagedIdentity -or $envType -eq 'AzureAutomation') {
-                az login --identity | Out-Null
-            }
-            else {
-                az login | Out-Null
-            }
-            $acct = az account show --output json | ConvertFrom-Json
+        else {
+            az login --tenant $TenantId | Out-Null
         }
+        $acct = az account show --output json | ConvertFrom-Json
     }
     Write-Output "Azure CLI logged in as: $($acct.user.name)"        
 
@@ -155,17 +133,14 @@ if($null -ne $ExclusionTags){
     }
 }
 
-# Ensure connection with both PowerShell and CLI.
-Connect-Azure
-$context = Get-AzContext -ErrorAction SilentlyContinue
-Write-Output "Connected to Azure as: $($context.Account)"
-
 if (-not $TenantId) {
     $TenantId = $context.Tenant.Id
     Write-Output "No TenantId provided. Using current context TenantId: $TenantId"
 } else {
     Write-Output "Using provided TenantId: $TenantId"
 }
+# Ensure connection with both PowerShell and CLI.
+Connect-Azure ($TenantId)
 
 # Map License Types for SQL VMs: LicenseIncluded -> PAYG, BasePrice -> AHUB.
 $SqlVmLicenseType = if ($LicenseType -eq "LicenseIncluded") { "PAYG" } else { "AHUB" }
