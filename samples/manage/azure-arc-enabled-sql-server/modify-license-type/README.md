@@ -18,6 +18,8 @@ ms.date: 05/01/2025
 
     05/09/2025 - added *-ReportOnly* and *-TenandId* parameters
 
+    05/13/2025 - added support for a .CSV file with the machine names 
+
 # Overview
 
 This script provides a scaleable solution to set or change the license type and/or enable or disable the ESU policy on all Azure-connected SQL Servers in a specified scope.
@@ -38,34 +40,45 @@ The script accepts the following command line parameters:
 
 | **Parameter** &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  | **Value** &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&nbsp; &nbsp; &nbsp; &nbsp; | **Description** |
 |:--|:--|:--|
-|`-SubId`|subscription_id *or* a file_name|*Optional*: Subscription id or a .csv file with the list of subscriptions<sup>1</sup>. If not specified all subscriptions will be scanned|
-|`-ResourceGroup` |resource_group_name|*Optional*: Limits the scope  to a specific resource group|
-|`-MachineName` |machine_name|*Optional*: Limits the scope to a specific machine|
-|`-LicenseType` | "Paid", "PAYG" or "LicenseOnly"| *Optional*: Sets the license type to the specified value |
-|`-ConsentToRecurringPAYG` | "Yes" or "No" |*Optional*. Consents to enabling the recurring PAYG billing. LicenseType must be "PAYG". Applies to CSP subscriptions only.|
-|`-UsePcoreLicense` | "Yes", "No" | *Optional*. Enables unlimited virtualization license if the value is "Yes" or disables it if the value is "No". To enable, the license type must be "Paid" or "PAYG"|
-|`-EnableESU` | "Yes", "No" | *Optional*. Enables the ESU policy the value is "Yes" or disables it if the value is "No". To enable, the license type must be "Paid" or "PAYG"|
+|`-SubId`|`subscription_id` *or* `file_name`|*Optional*: Subscription id or a .csv file with the list of subscriptions<sup>1</sup>. If not specified all subscriptions will be scanned|
+|`-ResourceGroup` |`resource_group_name`|*Optional*: Limits the scope  to a specific resource group|
+|`-MachineName` |`machine_name`|*Optional*: A single machine name or a CSV file name containing a list of machine names<sup>2</sup>.|
+|`-LicenseType` | `Paid`, `PAYG` or `LicenseOnly`| *Optional*: Sets the license type to the specified value |
+|`-ConsentToRecurringPAYG` | `Yes`, `No` |*Optional*. Consents to enabling the recurring PAYG billing. LicenseType must be "PAYG". Applies to CSP subscriptions only.|
+|`-UsePcoreLicense` | `Yes`, `No` | *Optional*. Enables unlimited virtualization license if the value is "Yes" or disables it if the value is "No". To enable, the license type must be "Paid" or "PAYG"|
+|`-EnableESU` | `Yes`, `No` | *Optional*. Enables the ESU policy the value is "Yes" or disables it if the value is "No". To enable, the license type must be "Paid" or "PAYG"|
 |`-Force`| |*Optional*. Forces the change of the license type to the specified value on all installed extensions. If `-Force` is not specified, the `-LicenseType` value is set only if undefined. Ignored if `-LicenseType`  is not specified|
+|`-ExclusionTags`| `{"name":"value","name":"value"}` |*Optional*. If specified, excludes the resources that have this tag assigned.|
+|`-TenantId`| `tenant_id` |*Optional*. If specified, uses this tenant id to log in. Otherwise, the current context is used.|
+|`-ReportOnly`| |*Optional*. If true, generates a csv file with the list of resources that are to be modified, but doesn't make the actual change.|
+|`-UseManagedIdentity`| |*Optional*. If true, logs in both PoaerShell and CLI using managed identity. Required to run the script as a runbook.|
 
 <sup>1</sup>You can create a .csv file using the following command and then edit to remove the subscriptions you don't  want to scan.
 ```PowerShell
 Get-AzSubscription | Export-Csv .\mysubscriptions.csv -NoTypeInformation
 ```
+<sup>2</sup>The .csv file must include a column *MachineName*. E.g.:
+```
+"MachineName",
+"Prod1",
+"Prod2",
+"Prod3"
+```
 
 ## Example 1
 
-The following command will scan all the subscriptions to which the user has access to, and set the license type to "Paid" on all servers where license type is undefined.
+The following command will scan all the subscriptions to which the user has access to, and set the license type to "PAYG" on all servers where license type is undefined, except those with the tag `Environment:Dev`
 
 ```PowerShell
-.\modify-license-type.ps1 -LicenseType Paid
+.\modify-license-type.ps1 -LicenseType PAYG -ExclusionTags {"Environment":"Dev"}
 ```
 
 ## Example 2
 
-The following command will scan the subscription `<sub_id>` and set the license type value to "Paid" on all servers.
+The following command will scan the subscription `<sub_id>` and set the license type value to "Paid" on all servers listed in `machines.csv`.
 
 ```PowerShell
-.\modify-license-type.ps1 -SubId <sub_id> -LicenseType Paid -Force
+.\modify-license-type.ps1 -SubId <sub_id> -MachineName machines.csv -LicenseType Paid -Force
 ```
 
 ## Example 3

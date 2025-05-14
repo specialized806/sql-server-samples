@@ -115,7 +115,7 @@ function Connect-Azure {
         $ctx = Connect-AzAccount -Tenant $TenantId -Identity -ErrorAction Stop | Out-Null
     }
     else {
-        $ctx = Connect-A-AzAccount -Tenant $TenantId -ErrorAction Stop | Out-Null
+        $ctx = Connect-AzAccount -Tenant $TenantId -ErrorAction Stop | Out-Null
     }
     Write-Output "Connected to Azure PowerShell as: $($ctx.Account)"
 
