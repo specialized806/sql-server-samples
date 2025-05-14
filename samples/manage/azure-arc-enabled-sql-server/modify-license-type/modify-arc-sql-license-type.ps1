@@ -65,6 +65,10 @@ param (
 
     [Parameter (Mandatory= $false)]
     [ValidateSet("Yes","No", IgnoreCase=$false)]
+    [string] $ConsentToRecurringPAYG,
+    
+    [Parameter (Mandatory= $false)]
+    [ValidateSet("Yes","No", IgnoreCase=$false)]
     [string] $UsePcoreLicense,
 
     [Parameter (Mandatory= $false)]
@@ -258,7 +262,7 @@ foreach ($sub in $subscriptions) {
     | join kind=leftouter (
     resources
     | where type == 'microsoft.azurearcdata/sqlserverinstances'
-    | project machineName= name, edition = properties.edition, mytags = tags"
+    | project machineName= name, mytags = tags"
    $query += ") on machineName"
     
     if ($ResourceGroup) {
@@ -271,7 +275,7 @@ foreach ($sub in $subscriptions) {
     } 
     
     $query += "
-    | project machineName, extensionName = name, resourceGroup, location, subscriptionId, extensionPublisher, extensionType, properties,provisioningState, edition
+    | project machineName, extensionName = name, resourceGroup, location, subscriptionId, extensionPublisher, extensionType, properties,provisioningState
     "
     $query
     $resources = Search-AzGraph -Query "$($query)" 
@@ -290,7 +294,6 @@ foreach ($sub in $subscriptions) {
             SubscriptionId = $resources[$count].subscriptionId
             Publisher = $resources[$count].extensionPublisher
             ExtensionType = $resources[$count].extensionType
-            Edition = $resources[$count].edition
         }
 
         write-Output "VM - $($setID.MachineName)"
@@ -357,10 +360,6 @@ foreach ($sub in $subscriptions) {
                 }
             }
             
-            if ($setID.Edition -eq "Express") {
-                $LicenseType = "LicenseOnly"
-            }
-
             if ($EnableESU) {
                 if (($ext.Setting["LicenseType"] -in ("Paid","PAYG")) -or  ($EnableESU -eq "No")) {
                     $ext.Setting["enableExtendedSecurityUpdates"] = ($EnableESU -eq "Yes")
@@ -382,7 +381,23 @@ foreach ($sub in $subscriptions) {
                     write-Output "The configured license type does not support ESUs" 
                 }
             }
+            
+            # Add or update ConsentToRecurringPAYG setting if applicable
+            if ($ConsentToRecurringPAYG -eq "Yes") {
+                $isPayg = ($LicenseType -eq "PAYG") -or ($ext.Setting["LicenseType"] -eq "PAYG")
+                if ($isPayg) {
+                    if (-not $ext.Setting.ContainsKey("ConsentToRecurringPAYG") -or -not $ext.Setting["ConsentToRecurringPAYG"]["Consented"]) {
+                        $ext.Setting["ConsentToRecurringPAYG"] = @{
+                            "Consented" = $true;
+                            "ConsentTimestamp" = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
+                        }
+                        $WriteSettings = $true
+                    }
+                }
+            }
+
             write-Output "   Write Settings - $($WriteSettings)"
+
             if (-not $ReportOnly) {
                 If ($WriteSettings) {
                     try { 
