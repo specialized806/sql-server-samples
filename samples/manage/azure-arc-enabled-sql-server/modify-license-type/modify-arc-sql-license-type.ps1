@@ -1,3 +1,4 @@
+
 <#
 .SYNOPSIS
     Updates the license type for Azure Arc SQL resources to a specified license and license related options.  
@@ -17,7 +18,7 @@
     Optional. Limit the scope to a specific resource group.
 
 .PARAMETER MachineName 
-    Optional. Limits the scope to a specific machine
+    Optional. A single machine name or a CSV file name containing a list of machine names.
 
 .PARAMETER LicenseType
     Optional. License type to set. Allowed values: "PAYG", "Paid" or "LicenseOnly"
@@ -114,7 +115,7 @@ function Connect-Azure {
         $ctx = Connect-AzAccount -Tenant $TenantId -Identity -ErrorAction Stop | Out-Null
     }
     else {
-        $ctx = Connect-AzAccount -Tenant $TenantId -ErrorAction Stop | Out-Null
+        $ctx = Connect-A-AzAccount -Tenant $TenantId -ErrorAction Stop | Out-Null
     }
     Write-Output "Connected to Azure PowerShell as: $($ctx.Account)"
 
@@ -159,6 +160,7 @@ if ($UseManagedIdentity) {
     Connect-Azure ($TenantId)
 }
 
+# Ensure the required modules are imported
 try{
     Import-Module AzureAD -UseWindowsPowerShell
 }
@@ -192,6 +194,27 @@ if ($SubId -like "*.csv") {
     $subscriptions = [PSCustomObject]@{SubscriptionId = $SubId} | Get-AzSubscription -TenantID $TenantId
 }else {
     $subscriptions = Get-AzSubscription -TenantID $TenantId
+}
+
+# Handle MachineName input (single or CSV)
+$machineNames = @()
+if ($MachineName) {
+    if ($MachineName -like "*.csv") {
+        try {
+            $machines = Import-Csv $MachineName
+            foreach ($m in $machines) {
+                if ($m.MachineName) {
+                    $machineNames += $m.MachineName
+                }
+            }
+            Write-Output "Loaded $($machineNames.Count) machine names from CSV."
+        } catch {
+            Write-Error "Failed to import machine names from CSV: $_"
+            exit 1
+        }
+    } else {
+        $machineNames += $MachineName
+    }
 }
 
 Write-Host ([Environment]::NewLine + "-- Scanning subscriptions --")
@@ -236,27 +259,15 @@ foreach ($sub in $subscriptions) {
     resources
     | where type == 'microsoft.azurearcdata/sqlserverinstances'
     | project machineName= name, edition = properties.edition, mytags = tags"
-
-    <#if($tagTable.Keys.Count -gt 0) {
-        $query += "| where "
-        $tagcount = $tagTable.Keys.Count
-        foreach ($tag in $tagTable.Keys) {
-            $tagcount --
-            $query += "(mytags['$($tag)'] != '$($tagTable[$tag])')"
-            if($tagcount -gt 0) {
-                $query += " and "
-            }
-        }
-    }#>
-
-    $query += ") on machineName"
+   $query += ") on machineName"
     
     if ($ResourceGroup) {
         $query += "| where resourceGroup =~ '$($ResourceGroup)'"
     }
 
-    if ($MachineName) {
-        $query += "| where machineName =~ '$($MachineName)'"
+    if ($machineNames.Count -gt 0) {
+        $machineFilter = $machineNames | ForEach-Object { "'$_'" } | -join ", "
+        $query += "| where machineName in~ ($machineFilter)"
     } 
     
     $query += "
