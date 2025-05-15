@@ -249,35 +249,40 @@ foreach ($sub in $subscriptions) {
         }
 
     Write-Output "Collecting list of resources to update"
+
     $query = "
     resources
-    |  where type =~ 'microsoft.hybridcompute/machines/extensions'
-    | where subscriptionId =~ '$($sub.Id)'
-    | extend extensionPublisher = tostring(properties.publisher), 
-    extensionType = tostring(properties.type), provisioningState = tostring(properties.provisioningState)
-    | parse id with * '/providers/Microsoft.HybridCompute/machines/' machineName '/extensions/' *
-    | where extensionPublisher =~ 'Microsoft.AzureData'
-    | where provisioningState =~ 'Succeeded'
-    | where properties.settings.LicenseType!='$LicenseType'
-    | join kind=leftouter (
-    resources
-    | where type == 'microsoft.azurearcdata/sqlserverinstances'
-    | project machineName= name, mytags = tags"
-   $query += ") on machineName"
-    
+    | where type == "microsoft.hybridcompute/machines"
+    | where properties.detectedProperties.mssqldiscovered == 'true'
+    "
     if ($ResourceGroup) {
         $query += "| where resourceGroup =~ '$($ResourceGroup)'"
     }
 
     if ($machineNames.Count -gt 0) {
         $machineFilter = $machineNames | ForEach-Object { "'$_'" } | -join ", "
-        $query += "| where machineName in~ ($machineFilter)"
+        $query += "| where name in~ ($machineFilter)"
     } 
-    
+
     $query += "
-    | project machineName, extensionName = name, resourceGroup, location, subscriptionId, extensionPublisher, extensionType, properties,provisioningState
+    | extend machineId = tolower(tostring(id))
+    | project machineId, Machine_name = name
+    | join kind= inner (
+        resources
+        | where type == "microsoft.hybridcompute/machines/extensions"
+        | where properties.publisher =~ 'Microsoft.AzureData'
+        | where properties.provisioningState == 'Succeeded'
+        | where properties.settings.LicenseType!='$LicenseType'
+        | extend extensionName = name
+        | extend extensionPublisher = properties.publisher
+        | extend extensionType = properties.type
+        | parse id with '/subscriptions/' subscriptionId '/resourceGroups/' resourceGroup '/providers/Microsoft.HybridCompute/machines/' machineName '/extensions/' extensionName
+    ) on $left.machineName == $right.machineName
+    | project machineName, extensionName, resourceGroup, location, subscriptionId, extensionPublisher, extensionType
     "
-    $query
+
+    Write-Output $query
+
     $resources = Search-AzGraph -Query "$($query)" 
     Write-Output "Found $($resources.Count) resource(s) to update"
     $count = $resources.Count
