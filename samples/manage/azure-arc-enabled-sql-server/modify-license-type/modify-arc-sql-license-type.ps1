@@ -195,9 +195,9 @@ if ($SubId -like "*.csv") {
     $subscriptions = Import-Csv $SubId
 }elseif($SubId -ne "") {
     Write-Output "Passed Subscription $($SubId)"
-    $subscriptions = [PSCustomObject]@{SubscriptionId = $SubId} | Get-AzSubscription -TenantID $TenantId
+    $subscriptions = Get-AzSubscription -SubscriptionId $SubId
 }else {
-    $subscriptions = Get-AzSubscription -TenantID $TenantId
+    $subscriptions = Get-AzSubscription | Where-Object { $_.TenantId -eq $tenantId }
 }
 
 # Handle MachineName input (single or CSV)

@@ -169,23 +169,13 @@ $SqlVmLicenseType = if ($LicenseType -eq "LicenseIncluded") { "PAYG" } else { "A
 $modifiedResources = @()
 
 # Determine the subscriptions to process: CSV file, single subscription, or all accessible subscriptions.
-try {
-    if ($SubId -and $SubId -like "*.csv") {
-        Write-Output "Gathering subscriptions from CSV file: $SubId"
-        $subscriptions = Import-Csv -Path $SubId
-    }
-    elseif (($null -ne $SubId) -and $SubId -ne "") {
-        Write-Output "Gathering subscription details for: $SubId"
-        $subscriptions = @(az account show --subscription $SubId --output json | ConvertFrom-Json)
-    }
-    else {
-        Write-Output "Gathering all accessible subscriptions..."
-        $subscriptions = az account list --output json | ConvertFrom-Json
-    }
-}
-catch {
-    Write-Error "Error determining subscriptions: $_"
-    exit 1
+if ($SubId -like "*.csv") {
+    $subscriptions = Import-Csv $SubId
+}elseif($SubId -ne "") {
+    Write-Output "Passed Subscription $($SubId)"
+    $subscriptions = Get-AzSubscription -SubscriptionId $SubId
+}else {
+    $subscriptions = Get-AzSubscription | Where-Object { $_.TenantId -eq $tenantId }
 }
 
 # Build resource group filter if specified.
@@ -375,13 +365,13 @@ foreach ($sub in $subscriptions) {
                     # Collect data before modification
                     $modifiedResources += [PSCustomObject]@{
                         TenantID            = $TenantId
-                        SubID               = $server.SubscriptionId
+                        SubID               = $db.SubscriptionId
                         ResourceName        = $db.name
                         ResourceType        = $db.ResourceType
                         Status              = $db.State
                         OriginalLicenseType = $db.licenseType
-                        ResourceGroup       = $server.resourceGroup
-                        Location            = $server.location
+                        ResourceGroup       = $db.resourceGroup
+                        Location            = $db.location
                     }
                     
                     if (-not $ReportOnly) {
@@ -405,13 +395,13 @@ foreach ($sub in $subscriptions) {
                         # Collect data before modification
                         $modifiedResources += [PSCustomObject]@{
                             TenantID            = $TenantId
-                            SubID               = $server.SubscriptionId
+                            SubID               = $pool.SubscriptionId
                             ResourceName        = $pool.name
                             ResourceType        = $pool.ResoureType
                             Status              = $pool.State
                             OriginalLicenseType = $pool.licenseType
-                            ResourceGroup       = $server.resourceGroup
-                            Location            = $server.location
+                            ResourceGroup       = $pool.resourceGroup
+                            Location            = $pool.location
                         }
                         
                         if (-not $ReportOnly) {
