@@ -123,19 +123,6 @@ function Connect-Azure {
     }
     Write-Output "Connected to Azure PowerShell as: $($ctx.Account)"
 
-    # 3) Sync Azure CLI if available
-    if (Get-Command az -ErrorAction SilentlyContinue) {
-        Write-Output "Running az login..."
-        if ($UseManagedIdentity -or $envType -eq 'AzureAutomation') {
-            az login --tenant $TenantId --identity | Out-Null
-        }
-        else {
-            az login --tenant $TenantId | Out-Null
-        }
-        $acct = az account show --output json | ConvertFrom-Json
-    }
-    Write-Output "Azure CLI logged in as: $($acct.user.name)"        
-
 }
 
 
