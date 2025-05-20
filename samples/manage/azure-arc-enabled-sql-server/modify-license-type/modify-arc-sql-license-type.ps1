@@ -33,7 +33,7 @@
     Optional. Enables the ESU policy if the value is "Yes" or disables it if the value is "No". To enable, the license type must be "Paid" or "PAYG"
 
 .PARAMETER Force
-    Optional. Forces the chnahge of the license type to the specified value on all installed extensions. If not forced, the changes will apply only to the extensions where the license type is undefined.    
+    Optional. Forces the change of the license type to the specified value on all installed extensions. If not forced, the changes will apply only to the extensions where the license type is undefined.    
 
 .PARAMETER ExclusionTags
     Optional. If specified, excludes the resources that have this tag assigned.
@@ -166,10 +166,19 @@ if ($UseManagedIdentity) {
 
 # Ensure the required modules are imported
 try{
-    Import-Module AzureAD -UseWindowsPowerShell
+    # Check if Microsoft.Graph module is installed
+    if (-not (Get-Module -ListAvailable -Name Microsoft.Graph)) {
+        Write-Host "Microsoft.Graph module not found. Installing..."
+        Install-Module -Name Microsoft.Graph -Scope CurrentUser -Force
+    }else {
+        Write-Host "Microsoft.Graph module is already installed."
+    }
+
+    # Import the module
+    Import-Module Microsoft.Graph
 }
 catch{
-    Write-Output "Can't import module AzureAD"
+    Write-Output "Can't import module Microsoft.Graph"
 }
 try{
     Import-Module Az.Accounts
@@ -233,43 +242,30 @@ foreach ($sub in $subscriptions) {
         {continue}
     }
 
-    # Consent tag enforcement on the CSP subscriptions
-     # Add or update ConsentToRecurringPAYG setting if applicable
-        if ($ConsentToRecurringPAYG -eq "Yes") {
-            $isPayg = ($LicenseType -eq "PAYG") -or ($settings["LicenseType"] -eq "PAYG")
-            if ($isPayg) {
-                if (-not $settings.ContainsKey("ConsentToRecurringPAYG") -or -not $settings["ConsentToRecurringPAYG"]["Consented"]) {
-                    $settings["ConsentToRecurringPAYG"] = @{
-                        "Consented" = $true;
-                        "ConsentTimestamp" = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ss.fffZ')
-                    }
-                    $WriteSettings = $true
-                }
-            }
-        }
-
     Write-Output "Collecting list of resources to update"
 
     $query = "
     resources
-    | where type == "microsoft.hybridcompute/machines"
-    | where properties.detectedProperties.mssqldiscovered == 'true'
-    "
+    | where subscriptionId =~ '$($sub.Id)'
+    | where type == 'microsoft.hybridcompute/machines'
+    | where properties.detectedProperties.mssqldiscovered == 'true'"
     if ($ResourceGroup) {
-        $query += "| where resourceGroup =~ '$($ResourceGroup)'"
+        $query += "
+    | where resourceGroup =~ '$ResourceGroup'"
     }
 
     if ($machineNames.Count -gt 0) {
-        $machineFilter = $machineNames | ForEach-Object { "'$_'" } | -join ", "
+        $machineFilter = ($machineNames | ForEach-Object { "'$_'" }) -join ", "
         $query += "| where name in~ ($machineFilter)"
-    } 
+    }
 
     $query += "
     | extend machineId = tolower(tostring(id))
-    | project machineId, Machine_name = name
+    | project machineId, machineName = name
     | join kind= inner (
         resources
-        | where type == "microsoft.hybridcompute/machines/extensions"
+        | where subscriptionId =~ '$($sub.Id)'
+        | where type == 'microsoft.hybridcompute/machines/extensions'
         | where properties.publisher =~ 'Microsoft.AzureData'
         | where properties.provisioningState == 'Succeeded'
         | where properties.settings.LicenseType!='$LicenseType'
@@ -277,7 +273,7 @@ foreach ($sub in $subscriptions) {
         | extend extensionPublisher = properties.publisher
         | extend extensionType = properties.type
         | parse id with '/subscriptions/' subscriptionId '/resourceGroups/' resourceGroup '/providers/Microsoft.HybridCompute/machines/' machineName '/extensions/' extensionName
-    ) on $left.machineName == $right.machineName
+    ) on `$left.machineName == `$right.machineName
     | project machineName, extensionName, resourceGroup, location, subscriptionId, extensionPublisher, extensionType
     "
 
@@ -289,8 +285,6 @@ foreach ($sub in $subscriptions) {
     
     while($count -gt 0) {
         $count-=1
-        Write-Output "VM-$($count)"
-        write-Output "VM - $($resources[$count].MachineName)"
         $setID = @{
             MachineName = $resources[$count].MachineName
             Name = $resources[$count].extensionName
@@ -301,7 +295,7 @@ foreach ($sub in $subscriptions) {
             ExtensionType = $resources[$count].extensionType
         }
 
-        write-Output "VM - $($setID.MachineName)"
+        write-Output "   MachineName - $($setID.MachineName)"
         write-Output "   ResourceGroup - $($setID.ResourceGroup)"
         write-Output "   Location - $($setID.Location)"
         write-Output "   SubscriptionId - $($setID.SubscriptionId)"
@@ -310,19 +304,7 @@ foreach ($sub in $subscriptions) {
         # Get connected machine info
         $sqlvm = Get-AzConnectedMachine -Name $setID.MachineName -ResourceGroup $setID.ResourceGroup | Select-Object Name, Tags, Status
 
-        # Collect data before modification
-        $modifiedResources += [PSCustomObject]@{
-            TenantID            = $TenantId
-            SubID               = $setID.SubscriptionId
-            ResourceName        = $setID.MachineName
-            ResourceType        = $setID.ExtensionType
-            Status              = $sqlvm.Status
-            OriginalLicenseType = $settings.LicenseType
-            ResourceGroup       = $setID.ResourceGroup
-            Location            = $setID.Location
-            # Cores             <To be added>
-        }
-
+        
         $excludedByTags = $false
         foreach ($tag in $tagTable.Keys){
             if($sqlvm.Tags.ContainsKey($tag))
@@ -339,16 +321,27 @@ foreach ($sub in $subscriptions) {
            
         
         $WriteSettings = $false
-        $settings = $resources[$count].properties.settings | ConvertTo-Json | ConvertFrom-Json
         $ext = Get-AzConnectedMachineExtension -Name $setID.Name -ResourceGroupName $setID.ResourceGroup -MachineName $setID.MachineName
+
+        # Collect data before modification
+        $modifiedResources += [PSCustomObject]@{
+            TenantID            = $TenantId
+            SubID               = $setID.SubscriptionId
+            ResourceName        = $setID.MachineName
+            ResourceType        = $setID.ExtensionType
+            Status              = $sqlvm.Status
+            OriginalLicenseType = $ext.Setting["LicenseType"]
+            ResourceGroup       = $setID.ResourceGroup
+            Location            = $setID.Location
+            # Cores             <To be added>
+        }
+
         if($ext.ProvisioningState -ne "Succeeded") {
             write-Output "Extension is not in a valid state. Skipping..."
             {continue}
         } else {
-            $LO_Allowed = (!$settings["enableExtendedSecurityUpdates"] -and !$EnableESU) -or  ($EnableESU -eq "No")
+            $LO_Allowed = (!$ext.Setting["enableExtendedSecurityUpdates"] -and !$EnableESU) -or  ($EnableESU -eq "No")
             
-            write-Output "   LicenseType - $($settings.LicenseType)"
-
             if ($LicenseType) {
                 if (($LicenseType -eq "LicenseOnly") -and !$LO_Allowed) {
                     write-Output "ESU must be disabled before license type can be set to $($LicenseType)"
