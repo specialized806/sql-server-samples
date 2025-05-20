@@ -39,7 +39,7 @@
     Optional. If specified, excludes the resources that have this tag assigned.
 
 .PARAMETER TenantId
-    Required. If specified, this tenant id to log in both PowerShell and CLI. Otherwise, the current login context is used.
+    Optional. If specified, this tenant id to log in both PowerShell and CLI. Otherwise, the current login context is used.
 
 .PARAMETER ReportOnly
     Optional. If true, generates a csv file with the list of resources that are to be modified, but doesn't make the actual change.
@@ -81,7 +81,7 @@ param (
     [Parameter (Mandatory= $false)]
     [object] $ExclusionTags,
 
-    [Parameter (Mandatory= $true)]
+    [Parameter (Mandatory= $false)]
     [string] $TenantId,
 
     [Parameter (Mandatory= $false)]
