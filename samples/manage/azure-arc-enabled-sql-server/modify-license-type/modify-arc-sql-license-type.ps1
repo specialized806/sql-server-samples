@@ -39,7 +39,7 @@
     Optional. If specified, excludes the resources that have this tag assigned.
 
 .PARAMETER TenantId
-    Optional. If specified, this tenant id to log in both PowerShell and CLI. Otherwise, the current login context is used.
+    Required. If specified, this tenant id to log in both PowerShell and CLI. Otherwise, the current login context is used.
 
 .PARAMETER ReportOnly
     Optional. If true, generates a csv file with the list of resources that are to be modified, but doesn't make the actual change.
@@ -81,7 +81,7 @@ param (
     [Parameter (Mandatory= $false)]
     [object] $ExclusionTags,
 
-    [Parameter (Mandatory= $false)]
+    [Parameter (Mandatory= $true)]
     [string] $TenantId,
 
     [Parameter (Mandatory= $false)]
@@ -123,6 +123,7 @@ function Connect-Azure {
     }
     Write-Output "Connected to Azure PowerShell as: $($ctx.Account)"
 
+
 }
 
 
@@ -152,21 +153,7 @@ if ($UseManagedIdentity) {
 }
 
 # Ensure the required modules are imported
-try{
-    # Check if Microsoft.Graph module is installed
-    if (-not (Get-Module -ListAvailable -Name Microsoft.Graph)) {
-        Write-Host "Microsoft.Graph module not found. Installing..."
-        Install-Module -Name Microsoft.Graph -Scope CurrentUser -Force
-    }else {
-        Write-Host "Microsoft.Graph module is already installed."
-    }
 
-    # Import the module
-    Import-Module Microsoft.Graph
-}
-catch{
-    Write-Output "Can't import module Microsoft.Graph"
-}
 try{
     Import-Module Az.Accounts
 }catch{
@@ -190,7 +177,6 @@ $modifiedResources = @()
 if ($SubId -like "*.csv") {
     $subscriptions = Import-Csv $SubId
 }elseif($SubId -ne "") {
-    Write-Output "Passed Subscription $($SubId)"
     $subscriptions = Get-AzSubscription -SubscriptionId $SubId
 }else {
     $subscriptions = Get-AzSubscription | Where-Object { $_.TenantId -eq $tenantId }
@@ -264,7 +250,7 @@ foreach ($sub in $subscriptions) {
     | project machineName, extensionName, resourceGroup, location, subscriptionId, extensionPublisher, extensionType
     "
 
-    Write-Output $query
+    #Write-Output $query
 
     $resources = Search-AzGraph -Query "$($query)" 
     Write-Output "Found $($resources.Count) resource(s) to update"
