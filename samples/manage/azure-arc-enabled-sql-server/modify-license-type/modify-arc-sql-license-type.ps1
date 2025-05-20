@@ -4,7 +4,7 @@
     Updates the license type for Azure Arc SQL resources to a specified license and license related options.  
 
 .DESCRIPTION
-    The script updates the license related settings of the SQL extenstion resources in a specified Entra ID tenant. You can specify a particular subscription, resource group or an individual connected machine. 
+    The script updates the license related settings of the SQL extension resources in a specified Entra ID tenant. You can specify a particular subscription, resource group or an individual connected machine. 
     You can also provide a list of subscriptions as a .CSV file. 
     By default, all subscriptions in your current tenant id are scanned.
 
@@ -39,13 +39,13 @@
     Optional. If specified, excludes the resources that have this tag assigned.
 
 .PARAMETER TenantId
-    Optional. If specified, this tenant id to log in both PoaerShell and CLI. Otyherwise, the current logoin context is used.
+    Optional. If specified, this tenant id to log in both PowerShell and CLI. Otherwise, the current login context is used.
 
 .PARAMETER ReportOnly
     Optional. If true, generates a csv file with the list of resources that are to be modified, but doesn't make the actual change.
 
 .PARAMETER UseManagedIdentity
-    Optional. If true, logs in both PoaerShell and CLI using managed identity. Required to run the script as a runbook.
+    Optional. If true, logs in both PowerShell and CLI using managed identity. Required to run the script as a runbook.
 
 #>
 
