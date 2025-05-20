@@ -140,7 +140,7 @@ if($null -ne $ExclusionTags){
 }
 
 if (-not $TenantId) {
-    $TenantId = $context.Tenant.Id
+    $TenantId = (Get-AzContext).Tenant.Id
     Write-Output "No TenantId provided. Using current context TenantId: $TenantId"
 } else {
     Write-Output "Using provided TenantId: $TenantId"
@@ -177,9 +177,10 @@ $modifiedResources = @()
 if ($SubId -like "*.csv") {
     $subscriptions = Import-Csv $SubId
 }elseif($SubId -ne "") {
-    $subscriptions = Get-AzSubscription -SubscriptionId $SubId
+    $subscriptions = Get-AzSubscription -SubscriptionId $SubId | Sort-Object TenantId
+
 }else {
-    $subscriptions = Get-AzSubscription | Where-Object { $_.TenantId -eq $tenantId }
+    $subscriptions = Get-AzSubscription | Where-Object { $_.TenantId -eq $tenantId } 
 }
 
 # Handle MachineName input (single or CSV)
