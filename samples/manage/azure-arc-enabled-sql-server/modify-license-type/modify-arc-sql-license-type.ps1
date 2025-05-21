@@ -140,7 +140,7 @@ if($null -ne $ExclusionTags){
 }
 
 if (-not $TenantId) {
-    $TenantId = (Get-AzContext).Tenant.Id
+    $TenantId =  (Get-AzContext).Tenant.Id
     Write-Output "No TenantId provided. Using current context TenantId: $TenantId"
 } else {
     Write-Output "Using provided TenantId: $TenantId"
