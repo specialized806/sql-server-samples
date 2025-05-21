@@ -110,6 +110,7 @@ The following command will scan all subscriptions in the account using managed i
 
 ```PowerShell
 .\modify-azure-sql-license-type.ps1 -TenantId <tenant_id> -LicenseType LicenseIncluded -UseManagedIdentity -ExclusionTags {"Environment":"Dev"} 
+```
 
 # Running the script using Cloud Shell
 
@@ -129,7 +130,8 @@ This option is recommended because Cloud shell has the Azure PowerShell modules 
     curl https://raw.githubusercontent.com/microsoft/sql-server-samples/master/samples/manage/azure-arc-enabled-sql-server/modify-azure-sql-license-type/modify-azure-sql-license-type.ps1 -o modify-azure-sql-license-type.ps1
     ```
 
-1. Run the script.
+ 1. Run the script by following an appropriate example. 
+
 
 > [!NOTE]
 > - To paste the commands into the shell, use `Ctrl-Shift-V` on Windows or `Cmd-v` on MacOS.
@@ -152,4 +154,4 @@ Use the following steps to run the script in a PowerShell session on your PC.
     Connect-AzureAD -TenantID <tenant_id>
     ```
 
-1. Run the script by following the examples. 
+1. Run the script by following an appropriate example. 

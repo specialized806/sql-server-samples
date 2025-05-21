@@ -135,7 +135,7 @@ This option is recommended because Cloud shell has the Azure PowerShell modules 
     curl https://raw.githubusercontent.com/microsoft/sql-server-samples/master/samples/manage/azure-arc-enabled-sql-server/modify-arc-sql-license-type/modify-arc-sql-license-type.ps1 -o modify-arc-sql-license-type.ps1
     ```
 
-1. Run the script.
+1. Run the script by following an appropriate example. 
 
 > [!NOTE]
 > - To paste the commands into the shell, use `Ctrl-Shift-V` on Windows or `Cmd-v` on MacOS.
