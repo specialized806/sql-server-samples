@@ -446,7 +446,7 @@ foreach ($sub in $subscriptions) {
             } else {
                 "[?licenseType!='${LicenseType}' $tagsFilter].{name:name, licenseType:licenseType, location:location, resourceGroup:resourceGroup, id:id, ResourceType:type, State:status}"
             }
-            $instancePools = az sql instance-pool list --query $instancePoolsQuery -o json | ConvertFrom-Json
+            $instancePools = az sql instance-pool list --query $instancePoolsQuery -o json 2>$null | ConvertFrom-Json 
             $poolsToUpdate = $instancePools | Where-Object { $_.licenseType -ne $LicenseType }
             if($poolsToUpdate.Count -eq 0) {
                 Write-Output "No SQL Instance Pools found that require a license update."
