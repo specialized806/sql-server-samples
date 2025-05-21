@@ -6,6 +6,19 @@ ms.author: sashan.romontei
 ms.date: 06/21/2025
 ---
 
+# About this sample
+
+- **Applies to:** Azure SQL Server resources
+- **Workload:** n/a
+- **Programming Language:** PowerShell. CLI
+- **Authors:** Alexander (Sasha) Nosov, Rodrigo Gerhardt Monteiro
+- **Update history:** 
+    
+    04/29/2025 - Initial version
+
+    05/13/2025 - Modified to fix errors and to remove the auto-start of the offline resources.
+
+
 # Overview
 
 This script provides a scaleable solution to change the license type of various Azure SQL resources within the selected scope. It automates the process of modifying license settings for SQL Databases, Elastic Pools, SQL Managed Instances, SQL Instance Pools, SQL Virtual Machines, and DataFactory SSIS Integration Runtimes. The script supports targeting a single subscription, a list of subscriptions defined in a CSV file, or all accessible subscriptions. Optionally, it can also start resources that are stopped (if the -ForceStartOnResources parameter is enabled).
@@ -139,4 +152,4 @@ Use the following steps to run the script in a PowerShell session on your PC.
     Connect-AzureAD -TenantID <tenant_id>
     ```
 
-1. Run the script by following an appropriate example. 
+1. Run the script by following the examples. 
