@@ -3,7 +3,7 @@ services: Azure SQL
 platforms: Azure
 author: anosov1960,rodrigomonteiro-gbb
 ms.author: sashan.romontei
-ms.date: 04/08/2025
+ms.date: 06/21/2025
 ---
 
 # Overview
@@ -44,58 +44,59 @@ The scripts is seamlessly integrated with Azure Authentication. It uses managed 
 
 | **Parameter** &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  | **Value** &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;&nbsp; &nbsp; &nbsp; &nbsp; | **Description** |
 |:--|:--|:--|
-|-SubId|subscription_id *or* a file_name|Optional: Subscription id or a .csv file with the list of subscriptions<sup>1</sup>. If not specified all subscriptions will be scanned|
-|-ResourceGroup |resource_group_name|Optional: Limits the scope  to a specific resource group|
-|-LicenseType | "LicenseIncluded" (default) or "BasePrice" | Optional: Sets the license type to the specified value |
-|-ForceStartOnResources| |(Optional) When enabled, the script will attempt to start SQL VMs and SQL Managed Instances if they are not running before applying the update.|
+|-SubId|`subscription_id` *or* a file_name|Optional: Subscription id or a .csv file with the list of subscriptions<sup>1</sup>. If not specified all subscriptions will be scanned|
+|-ResourceGroup |`resource_group_name`|Optional: Limits the scope  to a specific resource group|
+|-LicenseType | `LicenseIncluded` (default) or `BasePrice` | Optional: Sets the license type to the specified value |
+|`-ExclusionTags`| `{"name":"value","name":"value"}` |*Optional*. If specified, excludes the resources that have this tag assigned.|
+|`-TenantId`| `tenant_id` |*Optional*. If specified, uses this tenant id to log in. Otherwise, the current context is used.|
+|`-ReportOnly`| |*Optional*. If true, generates a csv file with the list of resources that are to be modified, but doesn't make the actual change.|
+|`-UseManagedIdentity`| |*Optional*. If true, logs in both PowerShell and CLI using managed identity. Required to run the script as a runbook.|
 
 # Logging & Error Handling
 
 The script logs key actions to the console and captures error messages using Write-Error. Check the console output for a summary report detailing which resources were updated.
 
-# Customizations
+# Reporting
 
-You might want to customize the script’s logging or incorporate additional logging (e.g., writing to a file or Azure Log Analytics) to integrate seamlessly with your monitoring and reporting workflow.
+The script produces a report listing the affected resources by creating a `ModifiedResources_{yyyyMMdd_HHmmss}.csv` file that contains the following information about each resource:
+
+- Tenant id
+- Subscription id
+- Resource name
+- Resource type
+- Status
+- Original license type
+- Resource group
+- Location
+
+> [!NOTE]
+> - If `-ReportOnly` is specified, the report shows the resources that would be affected without the actuall change being applied.
+
 
 # Script execution examples
 
 ## Example 1
 
-The following command will scan all the subscriptions to which the user has access to, and set the license type to pay-as-you-go on all SQL resources in each subscription that the user has access to.
+The following command will scan all the subscriptions in tenant `<tenant_id>`, and generates the list of the resources that would change the license type to "LicenseIncluded".
 
 ```PowerShell
-.\modify-license-type.ps1 -LicenseType LicenseIncluded
+.\modify-azure-sql-license-type.ps1 -TenantId <tenant_id> -LicenseType LicenseIncluded -ReportOnly
 ```
 
 ## Example 2
 
-The following command will scan a specific subscription, and set the license type to pay-as-you-go on all SQL resources.
+The following command will scan resource group `<resource_group_name>` in the subscription `<sub_id>` within the current tenant, set the license type value to "LicenseIncluded" on each resource that has a different license type.
 
 ```PowerShell
-.\modify-license-type.ps1 -SubId <sub_id> -LicenseType LicenseIncluded 
+.\modify-azure-sql-license-type.ps1 -SubId <sub_id> -ResourceGroup <resource_group_name> -LicenseType LicenseIncluded 
 ```
 
 ## Example 3
 
-The following command will scan the resource group `<resource_group_name>` in the subscription `<sub_id>`, set the license type value to pay-as-you-go. If the resource group has SQL VMs in the offline state, it will start each VM before applying the change, and then stop it. 
+The following command will scan all subscriptions in the account using managed identity, set the license type value to "LicenseIncluded" on all resources in tenant <tenant_id> that have a different license type.  The resources with the tag `Environment:Dev` will be excluded.
 
 ```PowerShell
-.\modify-license-type.ps1 -SubId <sub_id> -ResourceGroup <resource_group_name> -LicenseType LicenseIncluded -ForceStartOnResources
-```
-
-# Running the script from your PC
-
-1. Connect to Azure AD. You must specify `<tenant_id>` if you have access to more than one AAD tenants.
-
-    ```console
-   Connect-AzureAD -TenantID <tenant_id>
-    ```
-1. Open a command shell on your device and download the script the script to your local folder.
-
-```console
-curl https://raw.githubusercontent.com/microsoft/sql-server-samples/refs/heads/master/samples/manage/azure-hybrid-benefit/modify-license-type/modify-license-type.ps1
-```
-1. Execute the command as shown by the examples  
+.\modify-azure-sql-license-type.ps1 -TenantId <tenant_id> -LicenseType LicenseIncluded -UseManagedIdentity -ExclusionTags {"Environment":"Dev"} 
 
 # Running the script using Cloud Shell
 
@@ -103,7 +104,7 @@ This option is recommended because Cloud shell has the Azure PowerShell modules 
 
 1. Launch the [Cloud Shell](https://shell.azure.com/). For details, [read more about PowerShell in Cloud Shell](https://aka.ms/pscloudshell/docs).
 
-1. Connect to Azure AD. You must specify `<tenant_id>` if you have access to more than one AAD tenants.
+1. Connect to Azure AD. You can skip this step if you specify `<tenant_id>` as a parameter of the script. 
 
     ```console
    Connect-AzureAD -TenantID <tenant_id>
@@ -112,65 +113,30 @@ This option is recommended because Cloud shell has the Azure PowerShell modules 
 1. Upload the script to your cloud shell using the following command:
 
     ```console
-    curl https://raw.githubusercontent.com/microsoft/sql-server-samples/refs/heads/master/samples/manage/azure-hybrid-benefit/modify-license-type/modify-license-type.ps1
+    curl https://raw.githubusercontent.com/microsoft/sql-server-samples/master/samples/manage/azure-arc-enabled-sql-server/modify-azure-sql-license-type/modify-azure-sql-license-type.ps1 -o modify-azure-sql-license-type.ps1
     ```
 
-1. Execute the command as shown by the examples.
+1. Run the script.
 
 > [!NOTE]
 > - To paste the commands into the shell, use `Ctrl-Shift-V` on Windows or `Cmd-v` on MacOS.
 > - The script will be uploaded directly to the home folder associated with your Cloud Shell session.
 
-# Schedule the script execution using Azure Runbook
+# Running the script from a PC
 
-You can schedule the command to run as a runbook. Follow these steps using the Azure Portal:
 
-### 1. Download the Script
+Use the following steps to run the script in a PowerShell session on your PC.
 
-Open a command shell on your device and  dowload the script to to your current folder.
+1. Copy the script to your current folder:
 
-```console
-curl https://raw.githubusercontent.com/microsoft/sql-server-samples/refs/heads/master/samples/manage/azure-hybrid-benefit/modify-license-type/modify-license-type.ps1
-```
-### 2. Create or Use an Existing Automation Account
-[Create a new automation account](https://ms.portal.azure.com/#create/Microsoft.AutomationAccount)  or open an existing one. In the Advanced section, ensure that System assigned identity is selected.
+    ```console
+    curl https://raw.githubusercontent.com/microsoft/sql-server-samples/master/samples/manage/azure-arc-enabled-sql-server/modify-azure-sql-license-type/modify-azure-sql-license-type.ps1 -o modify-azure-sql-license-type.ps1
+    ```
 
-### 3. Import the Runbook
-- Navigate to the Process Automation group and select **Runbooks**.
+1. Connect to Azure AD. You can skip this step if you specify `<tenant_id>` as a parameter of the script.
 
-- Click on the **Import a runbook** tab and configure it:
+    ```console
+    Connect-AzureAD -TenantID <tenant_id>
+    ```
 
-    **File**: Select the file you downloaded in Step 1.  
-    **Name**: Enter a name for the runbook.  
-    **Type**: Set to PowerShell.  
-    **Runtime Version**: Choose 7.2.
-
-- Click **Import**.
-
-### 4. Publish the Runbook
-After the runbook is imported, click the **Publish** button to make it available for scheduling.
-
-### 5. Link the Runbook to a Schedule
-
-- Once the runbook status is *Published*, click on the **Link to schedule** button.  
-- Select *Link a schedule to your runbook* and click **+ Add**.
-- Configure the schedule:  
-    **Name**: Provide a name for the schedule.  
-    **Start Time**: Set the desired start time.  
-    **Recurrence**: Choose the recurrence need it.  
-- Click **Create**.
-
-### 6. Configure Runbook Parameters
-- Return to the **Schedule runbook** page.
-- Click on **Parameters** and run settings.
-- Paste the license type value into the appropriate field.
-- Click **OK** to link the schedule, then **OK** again to create the job.
-
-### 7. Verify the Runbook Execution
-On the runbook Overview page:
-- Open a recent job that was completed after the scheduled start time.
-- Click on the **Output tab** and verify that you see:  `Properties.activationState=Activated  `
-
-Your license is now active.
-
-For more information about the runbooks, see the [Runbook tutorial](https://docs.microsoft.com/en-us/azure/automation/learn/automation-tutorial-runbook-textual-powershell)
+1. Run the script by following an appropriate example. 

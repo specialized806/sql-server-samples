@@ -51,7 +51,7 @@ The script accepts the following command line parameters:
 |`-ExclusionTags`| `{"name":"value","name":"value"}` |*Optional*. If specified, excludes the resources that have this tag assigned.|
 |`-TenantId`| `tenant_id` |*Optional*. If specified, uses this tenant id to log in. Otherwise, the current context is used.|
 |`-ReportOnly`| |*Optional*. If true, generates a csv file with the list of resources that are to be modified, but doesn't make the actual change.|
-|`-UseManagedIdentity`| |*Optional*. If true, logs in both PoaerShell and CLI using managed identity. Required to run the script as a runbook.|
+|`-UseManagedIdentity`| |*Optional*. If true, logs in both PowerShell and CLI using managed identity. Required to run the script as a runbook.|
 
 <sup>1</sup>You can create a .csv file using the following command and then edit to remove the subscriptions you don't  want to scan.
 ```PowerShell
@@ -65,36 +65,38 @@ Get-AzSubscription | Export-Csv .\mysubscriptions.csv -NoTypeInformation
 "Prod3"
 ```
 
+# Script execution examples
+
 ## Example 1
 
-The following command will scan all the subscriptions to which the user has access to, and set the license type to "PAYG" on all servers where license type is undefined, except those with the tag `Environment:Dev`
+The following command will scan all the subscriptions in tenant `<tenant_id>`, and list the machines that would have the license type change to "PAYG" on all servers where license type is undefined. 
 
 ```PowerShell
-.\modify-license-type.ps1 -LicenseType PAYG -ExclusionTags {"Environment":"Dev"}
+.\modify-arc-sql-license-type.ps1 -TenantId <tenant_id> -LicenseType PAYG -ReportOnly
 ```
 
 ## Example 2
 
-The following command will scan the subscription `<sub_id>` and set the license type value to "Paid" on all servers listed in `machines.csv`.
+The following command will scan the subscription `<sub_id>` in the current tenant and set the license type value to "Paid" on all servers listed in `machines.csv`.
 
 ```PowerShell
-.\modify-license-type.ps1 -SubId <sub_id> -MachineName machines.csv -LicenseType Paid -Force
+.\modify-arc-sql-license-type.ps1 -SubId <sub_id> -MachineName machines.csv -LicenseType Paid -Force
 ```
 
 ## Example 3
 
-The following command will scan resource group `<resource_group_name>` in the subscription `<sub_id>`, set the license type value to "PAYG" and enable unlimited virtualization license on all servers in the specified resource group.
+The following command will scan resource group `<resource_group_name>` in the subscription `<sub_id>` within the current tenant, set the license type value to "PAYG" and enable unlimited virtualization license on all servers in the specified resource group.
 
 ```PowerShell
-.\modify-license-type.ps1 -SubId <sub_id> -ResourceGroup <resource_group_name> -LicenseType PAYG -UsePcoreLicense Yes -Force
+.\modify-arc-sql-license-type.ps1 -SubId <sub_id> -ResourceGroup <resource_group_name> -LicenseType PAYG -UsePcoreLicense Yes -Force
 ```
 
 ## Example 4
 
-The following command will set License Type to "Paid" and enables ESU on all servers in the subscriptions `<sub_id>` and the resource group `<resource_group_name>`.
+The following command will set License Type to "Paid" and enables ESU on all servers in the subscriptions `<sub_id>` of tenant `<tenant_id>` and the resource group `<resource_group_name>` except those with the tag `Environment:Dev`
 
 ```console
-.\modify-license-type.ps1 -SubId <sub_id> -ResourceGroup <resource_group_name> -LicenseType Paid -EnableESU Yes -Force
+.\modify-arc-sql-license-type.ps1 -TenantId <tenant_id> -SubId <sub_id> -ResourceGroup <resource_group_name> -LicenseType Paid -EnableESU Yes -Force -ExclusionTags {"Environment":"Dev"}
 ```
 
 ## Example 5
@@ -102,15 +104,15 @@ The following command will set License Type to "Paid" and enables ESU on all ser
 The following command will disable ESU on all servers in the subscriptions `<sub_id>`.
     
 ```console
-.\modify-license-type.ps1 -SubId <sub_id> -EnableESU No 
+.\modify-arc-sql-license-type.ps1 -SubId <sub_id> -EnableESU No 
 ```
 
 ## Example 6
 
-The following command will scan all subscriptions in the account, set the license type value to "PAYG" and consents to enabling recurring billing on all servers in the account.
+The following command will scan all subscriptions in the account using managed identity, set the license type value to "PAYG" and consents to enabling recurring billing on all servers in the account.
 
 ```PowerShell
-.\modify-license-type.ps1 -LicenseType PAYG -ConsentToRecurringPAYG Yes -Force
+.\modify-arc-sql-license-type.ps1 -LicenseType PAYG -ConsentToRecurringPAYG Yes -Force -UseManagedIdentity
 ```
 > [!NOTE]
 > The recurring billing only supported in the CSP accounts.
@@ -121,7 +123,7 @@ This option is recommended because Cloud shell has the Azure PowerShell modules 
 
 1. Launch the [Cloud Shell](https://shell.azure.com/). For details, [read more about PowerShell in Cloud Shell](https://aka.ms/pscloudshell/docs).
 
-1. Connect to Azure AD. You must specify `<tenant_id>` if you have access to more than one AAD tenants.
+1. Connect to Azure AD. You can skip this step if you specify `<tenant_id>` as a parameter of the script. 
 
     ```console
    Connect-AzureAD -TenantID <tenant_id>
@@ -130,7 +132,7 @@ This option is recommended because Cloud shell has the Azure PowerShell modules 
 1. Upload the script to your cloud shell using the following command:
 
     ```console
-    curl https://raw.githubusercontent.com/microsoft/sql-server-samples/master/samples/manage/azure-arc-enabled-sql-server/modify-license-type/modify-license-type.ps1 -o modify-license-type.ps1
+    curl https://raw.githubusercontent.com/microsoft/sql-server-samples/master/samples/manage/azure-arc-enabled-sql-server/modify-arc-sql-license-type/modify-arc-sql-license-type.ps1 -o modify-arc-sql-license-type.ps1
     ```
 
 1. Run the script.
@@ -147,27 +149,13 @@ Use the following steps to run the script in a PowerShell session on your PC.
 1. Copy the script to your current folder:
 
     ```console
-    curl https://raw.githubusercontent.com/microsoft/sql-server-samples/master/samples/manage/azure-arc-enabled-sql-server/modify-license-type/modify-license-type.ps1 -o modify-license-type.ps1
+    curl https://raw.githubusercontent.com/microsoft/sql-server-samples/master/samples/manage/azure-arc-enabled-sql-server/modify-arc-sql-license-type/modify-arc-sql-license-type.ps1 -o modify-arc-sql-license-type.ps1
     ```
 
-1. Make sure the NuGet package provider is installed:
-
-    ```console
-    Set-ExecutionPolicy  -ExecutionPolicy RemoteSigned -Scope CurrentUser
-    Install-packageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Scope CurrentUser -Force
-    ```
-
-1. Make sure the the Az module is installed. For more information, see [Install the Azure Az PowerShell module](https://learn.microsoft.com/powershell/azure/install-az-ps):
-
-    ```console
-    Install-Module Az -Scope CurrentUser -Repository PSGallery -Force
-    ```
-
-1. Connect to Azure AD and log in to your Azure account. You must specify `<tenant_id>` if you have access to more than one AAD tenants.
+1. Connect to Azure AD. You can skip this step if you specify `<tenant_id>` as a parameter of the script.
 
     ```console
     Connect-AzureAD -TenantID <tenant_id>
-    Connect-AzAccount -TenantID (Get-AzureADTenantDetail).ObjectId
     ```
 
-1. Run the script. 
+1. Run the script by following an appropriate example. 

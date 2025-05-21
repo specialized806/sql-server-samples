@@ -1,30 +1,22 @@
 <#
 .SYNOPSIS
     Updates the license type for Azure SQL resources (SQL DBs, Elastic Pools, Managed Instances, Instance Pools, SQL VMs)
-    to a specified model ("LicenseIncluded" or "BasePrice"). Optionally starts resources if needed.
+    to a specified model ("LicenseIncluded" or "BasePrice"). 
 
 .DESCRIPTION
     The script updates Azure SQL License types across subscriptions by modifying the license settings for a variety of SQL resources. It supports processing resources in one of the following ways:
+    The script processes several types of Azure SQL resources including:
 
-Single Subscription:
-Run against a specified subscription ID.
-CSV List of Subscriptions:
-Process multiple subscriptions provided in a CSV file.
-All Accessible Subscriptions:
-Automatically detect and update all subscriptions that you have access to.
-
-The script processes several types of Azure SQL resources including:
-
-SQL Virtual Machines (SQL VMs)
-SQL Managed Instances
-SQL Databases
-Elastic Pools
-SQL Instance Pools
-DataFactory SSIS Integration Runtimes
-This automation helps ensure that your licensing configuration is consistent across your environment without manual intervention.
+    SQL Virtual Machines (SQL VMs)
+    SQL Managed Instances
+    SQL Databases
+    Elastic Pools
+    SQL Instance Pools
+    DataFactory SSIS Integration Runtimes
 
 .VERSION
     1.0.0 - Initial version.
+    1.0.2 - Modified to fix errors and to remove the auto-start of the offline resources.
 
 .PARAMETER SubId
     A single subscription ID or a CSV file name containing a list of subscriptions.

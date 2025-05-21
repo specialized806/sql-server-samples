@@ -154,6 +154,29 @@ if ($UseManagedIdentity) {
 
 # Ensure the required modules are imported
 
+
+# Ensure NuGet provider is available
+if (-not (Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue)) {
+    Install-PackageProvider -Name NuGet -Force
+}
+
+# Check if Az module is installed
+$installedModule = Get-InstalledModule -Name Az -ErrorAction SilentlyContinue
+
+if (-not $installedModule) {
+    Write-Host "Az module not found. Installing latest version..."
+    Install-Module -Name Az -Scope CurrentUser -Repository PSGallery -Force
+} else {
+    # Get the latest version available in the PSGallery
+    $latestVersion = (Find-Module -Name Az -Repository PSGallery).Version
+    if ($installedModule.Version -lt $latestVersion) {
+        Write-Host "Az module is outdated. Updating to latest version..."
+        Update-Module -Name Az -Force
+    } else {
+        Write-Host "Az module is already up to date. No action needed."
+    }
+}
+
 try{
     Import-Module Az.Accounts
 }catch{
