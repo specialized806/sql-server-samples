@@ -24,29 +24,37 @@
 .PARAMETER ResourceGroup
     Optional. Limit the scope to a specific resource group.
 
-.PARAMETER LicenseType
+.PARAMETER ResourceName
+    Optional. Limit the scope to a specific resource.
+
+    .PARAMETER LicenseType
     Optional. License type to set. Allowed values: "LicenseIncluded" (default) or "BasePrice".
 
 .PARAMETER ExclusionTags
     Optional. If specified, excludes the resources that have this tag assigned.
 
 .PARAMETER TenantId
-    Optional. If specified, this tenant id to log in both PoaerShell and CLI. Otyherwise, the current logoin context is used.
+    Optional. If specified, this tenant id to log in both PowerShell and CLI. Otherwise, the current login context is used.
 
 .PARAMETER ReportOnly
     Optional. If true, generates a csv file with the list of resources that are to be modified, but doesn't make the actual change.
 
 .PARAMETER UseManagedIdentity
-    Optional. If true, logs in both PoaerShell and CLI using managed identity. Required to run the script as a runbook.
+    Optional. If true, logs in both PowerShell and CLI using managed identity. Required to run the script as a runbook.
 
+.PARAMETER ResourceName
+    Optional. If specified, only updates resources related to this name:
+    - For SQL Server: Updates all databases under the specified server
+    - For SQL Managed Instance: Updates the specified instance
+    - For SQL VM: Updates the specified VM
 #>
 
 param (
     [Parameter(Mandatory = $false)]
-    [string] $SubId="$null",
+    [string] $SubId="216b4c73-ee15-4ce0-957b-0a3bc0ec9975",
     
     [Parameter(Mandatory = $false)]
-    [string] $ResourceGroup=$null,
+    [string] $ResourceGroup="PayGoDBTest",
     
     [Parameter(Mandatory = $false)]
     [ValidateSet("LicenseIncluded", "BasePrice", IgnoreCase = $false)]
@@ -56,14 +64,21 @@ param (
     [object] $ExclusionTags,
 
     [Parameter (Mandatory= $false)]
-    [string] $TenantId,
+    [string] $TenantId="bad63398-8c5a-4af1-a2f8-b95c2f57d2b3",
 
     [Parameter (Mandatory= $false)]
     [switch] $ReportOnly,
 
     [Parameter (Mandatory= $false)]
-    [switch] $UseManagedIdentity
+    [switch] $UseManagedIdentity,
+    
+    [Parameter (Mandatory= $false)]
+    [string] $ResourceName="paygodb"
 )
+
+
+$scriptStartTime = Get-Date
+Write-Output "Script execution started at: $($scriptStartTime.ToString('yyyy-MM-dd HH:mm:ss'))"
 
 # Suppress unnecessary logging output
 $VerbosePreference      = "SilentlyContinue"
@@ -115,7 +130,6 @@ function Connect-Azure {
         $acct = az account show --output json | ConvertFrom-Json
     }
     Write-Output "Azure CLI logged in as: $($acct.user.name)"        
-
 }
 
 
@@ -218,7 +232,7 @@ if($tagTable.Keys.Count -gt 0) {
     $tagsFilter += " && "
     $tagcount = $tagTable.Keys.Count
     foreach ($tag in $tagTable.Keys) {
-        $tagcount --
+        $tagcount--
         $tagsFilter += " tags.$($tag) != '$($tagTable[$tag])' "
         if($tagcount -gt 0) {
             $tagsFilter += " && "
@@ -248,12 +262,26 @@ foreach ($sub in $subscriptions) {
         # --- Section: Update SQL Virtual Machines ---
         try {
             Write-Output "Seeking SQL Virtual Machines that require a license update to $SqlVmLicenseType..."
-            $sqlVmQuery = if ($rgFilter) {
-                "[?sqlServerLicenseType!='${SqlVmLicenseType}' && sqlServerLicenseType!= 'DR' && $rgFilter $tagsFilter].{name:name, resourceGroup:resourceGroup, sqlServerLicenseType:sqlServerLicenseType, type:type, id:id, Location:location}"
-            } else {
-                "[?sqlServerLicenseType!='${SqlVmLicenseType}' && sqlServerLicenseType!= 'DR' $tagsFilter].{name:name, resourceGroup:resourceGroup, sqlServerLicenseType:sqlServerLicenseType, type:type, id:id, Location:location}"
+            
+            # Build SQL VM query
+            $sqlVmQuery = "[?sqlServerLicenseType!='${SqlVmLicenseType}' && sqlServerLicenseType!= 'DR'"
+            
+            # Add resource group filter if specified
+            if ($rgFilter) {
+                $sqlVmQuery += " && $rgFilter"
             }
-
+            
+            # Add name filter if ResourceName specified
+            if ($ResourceName) {
+                $sqlVmQuery += " && name=='$ResourceName'"
+            }
+            
+            # Add tags filter if specified
+            if ($tagsFilter) {
+                $sqlVmQuery += " $tagsFilter"
+            }
+            
+            $sqlVmQuery += "].{name:name, resourceGroup:resourceGroup, sqlServerLicenseType:sqlServerLicenseType, type:type, id:id, Location:location}"
 
             Write-Output "Seeking SQL Virtual Machines with filter $sqlVmQuery..."
             $sqlVMs = az sql vm list --query $sqlVmQuery -o json | ConvertFrom-Json
@@ -265,7 +293,7 @@ foreach ($sub in $subscriptions) {
             }
             foreach ($sqlvm in $sqlVMs) {
 
-                if($null -ne (az vm list --query "[?name=='$sqlvm.name' && resourceGroup=='$sqlvm.resourceGroup' $tagsFilter]"))
+                if($null -ne (az vm list --query "[?name=='$($sqlvm.name)' && resourceGroup=='$($sqlvm.resourceGroup)' $tagsFilter]"))
                 {
                     $vmStatus = az vm get-instance-view --resource-group $sqlvm.resourceGroup --name $sqlvm.name --query "{Name:name, ResourceGroup:resourceGroup, PowerState:instanceView.statuses[?starts_with(code, 'PowerState/')].displayStatus | [0]}" -o json | ConvertFrom-Json
                     if ($vmStatus.PowerState -eq "VM running") {
@@ -292,7 +320,7 @@ foreach ($sub in $subscriptions) {
                     }
                 }
                 else {
-                    Write-Output "SQL VM '$($sqlvm.name)' in RG '$($sqlvm.resourceGroup)' Skipping because of tags ($tags)..."
+                    Write-Output "SQL VM '$($sqlvm.name)' in RG '$($sqlvm.resourceGroup)' Skipping because of tags..."
                 }
             }
             if($sqlVmsToUpdate.Count -eq 0) {
@@ -310,12 +338,21 @@ foreach ($sub in $subscriptions) {
         try {
             
             Write-Output "Processing SQL Managed Instances that are running to $LicenseType..."
+            
+            # Build Managed Instance query
             $miRunningQuery = "[?licenseType!='${LicenseType}' && hybridSecondaryUsage!='Passive' && state=='Ready'"
 
+            # Add resource group filter if specified
             if ($rgFilter) {
                 $miRunningQuery += " && $rgFilter"
             }
-
+            
+            # Add name filter if ResourceName specified
+            if ($ResourceName) {
+                $miRunningQuery += " && name=='$ResourceName'"
+            }
+            
+            # Add tags filter if specified
             if ($tagsFilter) {
                 $miRunningQuery += " $tagsFilter"
             }
@@ -337,7 +374,7 @@ foreach ($sub in $subscriptions) {
                     SubID               = ($mi.id -split '/')[2]
                     ResourceName        = $mi.name
                     ResourceType        = $mi.ResourceType
-                    Status              = $mi.State
+                    Status              = $mi.state
                     OriginalLicenseType = $mi.licenseType
                     ResourceGroup       = $mi.resourceGroup
                     Location            = $mi.location
@@ -357,87 +394,247 @@ foreach ($sub in $subscriptions) {
         # --- Section: Update SQL Databases and Elastic Pools ---
         try {
             Write-Output "Querying SQL Servers within this subscription..."
-            $serverQuery = if ($rgFilter) { "[?$rgFilter]" } else { "[]" }
-            $servers = az sql server list --query $serverQuery -o json | ConvertFrom-Json
-
-            foreach ($server in $servers) {
-                # Update SQL Databases
-                Write-Output "Scanning SQL Databases on server '$($server.name)'..."
-                $dbs = az sql db list --resource-group $server.resourceGroup --server $server.name --query "[?licenseType!='$($LicenseType)' && licenseType!=null $tagsFilter].{name:name, licenseType:licenseType, location:location, resourceGroup:resourceGroup, id:id, ResourceType:type, State:status}" -o json | ConvertFrom-Json
-                if( $dbs.Count -eq 0) {
-                    Write-Output "No SQL Databases found on Server $($server.name) that require a license update."
-                } else {
-                    Write-Output "Found $($dbs.Count) SQL Databases on Server $($server.name) that require a license update."
+            
+            # First, let's verify we're in the right subscription context
+            $currentSubContext = az account show --query id -o tsv
+            Write-Output "Currently in subscription context: $currentSubContext"
+            
+            if ($currentSubContext -ne $sub.id) {
+                Write-Output "Subscription context mismatch! Re-setting context..."
+                az account set --subscription $sub.id
+            }
+            
+            # Build SQL Server query with proper JMESPath syntax
+            $serverQuery = ""
+            $filterAdded = $false
+            
+            # Start with an empty filter array
+            if ($rgFilter -or $ResourceName -or $tagsFilter) {
+                $serverQuery = "["
+                
+                # Add resource group filter if specified
+                if ($rgFilter) {
+                    $serverQuery += "?$rgFilter"
+                    $filterAdded = $true
                 }
-                foreach ($db in $dbs) {
-                    
-                    # Collect data before modification
-                    $modifiedResources += [PSCustomObject]@{
-                        TenantID            = $TenantId
-                        SubID               = ($db.id -split '/')[2]
-                        ResourceName        = $db.name
-                        ResourceType        = $db.ResourceType
-                        Status              = $db.State
-                        OriginalLicenseType = $db.licenseType
-                        ResourceGroup       = $db.resourceGroup
-                        Location            = $db.location
-                    }
-                    
-                    if (-not $ReportOnly) {
-                        Write-Output "Updating SQL Database '$($db.name)' on server '$($server.name)' to license type '$LicenseType'..."
-                        $result = az sql db update --name $db.name --server $server.name --resource-group $server.resourceGroup --set licenseType=$LicenseType -o json | ConvertFrom-Json
-                        $finalStatus += $result
-                    }
-                }
-
-                # Update Elastic Pools
-                try {
-                    Write-Output "Scanning Elastic Pools on server '$($server.name)'..."
-                    $elasticPools = az sql elastic-pool list --resource-group $server.resourceGroup --server $server.name --query "[?licenseType!='$($LicenseType)' && licenseType!=null $tagsFilter].{name:name, licenseType:licenseType, location:location, resourceGroup:resourceGroup, id:id, ResourceType:type, State:status}" --only-show-errors -o json | ConvertFrom-Json
-                    if( $elasticPools.Count -eq 0) {
-                        Write-Output "No Elastic Pools found on Server $($server.name) that require a license update."
+                
+                # Add name filter if ResourceName is provided
+                if ($ResourceName) {
+                    if ($filterAdded) {
+                        $serverQuery += " && name=='$ResourceName'"
                     } else {
-                        Write-Output "Found $($elasticPools.Count) Elastic Pools on Server $($server.name) that require a license update."
-                    }
-                    foreach ($pool in $elasticPools) {
-                                        
-                        # Collect data before modification
-                        $modifiedResources += [PSCustomObject]@{
-                            TenantID            = $TenantId
-                            SubID               = ($pool.id -split '/')[2]
-                            ResourceName        = $pool.name
-                            ResourceType        = $pool.ResoureType
-                            Status              = $pool.State
-                            OriginalLicenseType = $pool.licenseType
-                            ResourceGroup       = $pool.resourceGroup
-                            Location            = $pool.location
-                        }
-                        
-                        if (-not $ReportOnly) {
-                            Write-Output "Updating Elastic Pool '$($pool.name)' on server '$($server.name)' to license type '$LicenseType'..."
-                            $result = az sql elastic-pool update --name $pool.name --server $server.name --resource-group $server.resourceGroup --set licenseType=$LicenseType --only-show-errors -o json | ConvertFrom-Json -ErrorAction SilentlyContinue
-                            $finalStatus += $result
-                            $report["ElasticPoolUpdated"] += $pool.name
-                        }
+                        $serverQuery += "?name=='$ResourceName'"
+                        $filterAdded = $true
                     }
                 }
-                catch {
-                    Write-Output "Encountered an issue while updating Elastic Pools on server '$($server.name)'. Continuing..."
+                
+                # Add tag filter if specified
+                if ($tagsFilter -and $filterAdded) {
+                    $serverQuery += "$tagsFilter"
+                } elseif ($tagsFilter) {
+                    $serverQuery += "?1==1$tagsFilter" # A trick to make the tags filter work when it's the only filter
+                }
+                
+                $serverQuery += "]"
+            } else {
+                # No filters, get all servers
+                $serverQuery = "[]"
+            }
+            
+            # Output the query for debugging
+            Write-Output "SQL Server query: $serverQuery"
+            
+            # Get all servers first as a fallback in case the query fails
+            $allServers = az sql server list -o json | ConvertFrom-Json
+            Write-Output "Found a total of $($allServers.Count) SQL Servers in subscription"
+            
+            # Now try the filtered query
+            $servers = az sql server list --query "$serverQuery" -o json | ConvertFrom-Json
+            
+            # Verify if we got any results
+            if ($null -eq $servers -or $servers.Count -eq 0) {
+                Write-Output "WARNING: No SQL Servers found with the specified filters."
+                Write-Output "Available SQL Servers in subscription:"
+                $allServers | ForEach-Object {
+                    Write-Output "  - $($_.name) (Resource Group: $($_.resourceGroup))"
+                }
+                
+                # Use all servers if no specific resource name was provided
+                if (-not $ResourceName) {
+                    Write-Output "Proceeding with all SQL Servers since no specific ResourceName was provided."
+                    $servers = $allServers
+                }
+            } else {
+                Write-Output "Found $($servers.Count) SQL Servers matching the criteria."
+                $servers | ForEach-Object {
+                    Write-Output "  - $($_.name) (Resource Group: $($_.resourceGroup))"
                 }
             }
-        }
-        catch {
+
+            # Process each server
+            foreach ($server in $servers) {
+                # Update SQL Databases
+                Write-Output "Scanning SQL Databases on server '$($server.name)' in resource group '$($server.resourceGroup)'..."
+                
+                # First get all databases to check if any exist
+                $allDbs = az sql db list --resource-group $server.resourceGroup --server $server.name -o json | ConvertFrom-Json
+                Write-Output "Found a total of $($allDbs.Count) databases on server '$($server.name)'"
+                
+                # Build database query with better error handling
+                $dbQuery = "[?licenseType!=null && licenseType!='$($LicenseType)'"
+                
+                # Add tags filter if specified
+                if ($tagsFilter) {
+                    $dbQuery += " $tagsFilter"
+                }
+                
+                $dbQuery += "].{name:name, licenseType:licenseType, location:location, resourceGroup:resourceGroup, id:id, ResourceType:type, State:status}"
+                
+                Write-Output "Database query: $dbQuery"
+                
+                # Get databases with error handling
+                try {
+                    $dbs = az sql db list --resource-group $server.resourceGroup --server $server.name --query "$dbQuery" -o json | ConvertFrom-Json
+                    
+                    if ($null -eq $dbs) {
+                        Write-Output "No SQL Databases found on Server $($server.name) that require a license update."
+                    } elseif ($dbs.Count -eq 0) {
+                        Write-Output "No SQL Databases found on Server $($server.name) that require a license update."
+                    } else {
+                        Write-Output "Found $($dbs.Count) SQL Databases on Server $($server.name) that require a license update:"
+                        $dbs | ForEach-Object {
+                            Write-Output "  - $($_.name) (Current license: $($_.licenseType))"
+                        }
+                        
+                        foreach ($db in $dbs) {
+                            # Collect data before modification
+                            $modifiedResources += [PSCustomObject]@{
+                                TenantID            = $TenantId
+                                SubID               = ($db.id -split '/')[2]
+                                ResourceName        = $db.name
+                                ResourceType        = $db.ResourceType
+                                Status              = $db.State
+                                OriginalLicenseType = $db.licenseType
+                                ResourceGroup       = $db.resourceGroup
+                                Location            = $db.location
+                            }
+                            
+                            if (-not $ReportOnly) {
+                                Write-Output "Updating SQL Database '$($db.name)' on server '$($server.name)' to license type '$LicenseType'..."
+                                try {
+                                    $result = az sql db update --name $db.name --server $server.name --resource-group $server.resourceGroup --set licenseType=$LicenseType -o json | ConvertFrom-Json
+                                    if ($result) {
+                                        Write-Output "Successfully updated database '$($db.name)' license to '$LicenseType'"
+                                        $finalStatus += $result
+                                    } else {
+                                        Write-Error "Failed to update database '$($db.name)' license. No result returned."
+                                    }
+                                } catch {
+                                    Write-Error "Error updating database '$($db.name)': $_"
+                                }
+                            }
+                        }
+                    }
+                } catch {
+                    Write-Error "Error querying databases on server '$($server.name)': $_"
+                }
+
+                # Update Elastic Pools with similar improved error handling
+                try {
+                    Write-Output "Scanning Elastic Pools on server '$($server.name)'..."
+                    
+                    # First check if there are any elastic pools
+                    $allPools = az sql elastic-pool list --resource-group $server.resourceGroup --server $server.name --only-show-errors -o json 2>$null | ConvertFrom-Json -ErrorAction SilentlyContinue
+                    
+                    if ($null -eq $allPools -or $allPools.Count -eq 0) {
+                        Write-Output "No Elastic Pools found on server '$($server.name)'."
+                    } else {
+                        Write-Output "Found $($allPools.Count) total Elastic Pools on server '$($server.name)'."
+                        
+                        # Build elastic pool query with better formatting
+                        $elasticPoolQuery = "[?licenseType!=null && licenseType!='$($LicenseType)'"
+                        
+                        # Add tags filter if specified
+                        if ($tagsFilter) {
+                            $elasticPoolQuery += " $tagsFilter"
+                        }
+                        
+                        $elasticPoolQuery += "].{name:name, licenseType:licenseType, location:location, resourceGroup:resourceGroup, id:id, ResourceType:type, State:state}"
+                        
+                        Write-Output "Elastic Pool query: $elasticPoolQuery"
+                        
+                        $elasticPools = az sql elastic-pool list --resource-group $server.resourceGroup --server $server.name --query "$elasticPoolQuery" --only-show-errors -o json 2>$null | ConvertFrom-Json -ErrorAction SilentlyContinue
+                        
+                        if ($null -eq $elasticPools -or $elasticPools.Count -eq 0) {
+                            Write-Output "No Elastic Pools found on Server $($server.name) that require a license update."
+                        } else {
+                            Write-Output "Found $($elasticPools.Count) Elastic Pools on Server $($server.name) that require a license update:"
+                            $elasticPools | ForEach-Object {
+                                Write-Output "  - $($_.name) (Current license: $($_.licenseType))"
+                            }
+                            
+                            foreach ($pool in $elasticPools) {
+                                # Collect data before modification
+                                $modifiedResources += [PSCustomObject]@{
+                                    TenantID            = $TenantId
+                                    SubID               = ($pool.id -split '/')[2]
+                                    ResourceName        = $pool.name
+                                    ResourceType        = $pool.ResourceType
+                                    Status              = $pool.State
+                                    OriginalLicenseType = $pool.licenseType
+                                    ResourceGroup       = $pool.resourceGroup
+                                    Location            = $pool.location
+                                }
+                                
+                                if (-not $ReportOnly) {
+                                    Write-Output "Updating Elastic Pool '$($pool.name)' on server '$($server.name)' to license type '$LicenseType'..."
+                                    try {
+                                        $result = az sql elastic-pool update --name $pool.name --server $server.name --resource-group $server.resourceGroup --set licenseType=$LicenseType --only-show-errors -o json 2>$null | ConvertFrom-Json -ErrorAction SilentlyContinue
+                                        if ($result) {
+                                            Write-Output "Successfully updated elastic pool '$($pool.name)' license to '$LicenseType'"
+                                            $finalStatus += $result
+                                        } else {
+                                            Write-Error "Failed to update elastic pool '$($pool.name)' license. No result returned."
+                                        }
+                                    } catch {
+                                        Write-Error "Error updating elastic pool '$($pool.name)': $_"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch {
+                    Write-Error "Error processing Elastic Pools on server '$($server.name)': $_"
+                }
+            }
+        } catch {
             Write-Error "An error occurred while processing SQL Databases or Elastic Pools: $_"
         }
 
         # --- Section: Update SQL Instance Pools ---
         try {
             Write-Output "Searching for SQL Instance Pools that require a license update..."
-            $instancePoolsQuery = if ($rgFilter) {
-                "[?licenseType!='${LicenseType}' && $rgFilter $tagsFilter].{name:name, licenseType:licenseType, location:location, resourceGroup:resourceGroup, id:id, ResourceType:type, State:status}"
-            } else {
-                "[?licenseType!='${LicenseType}' $tagsFilter].{name:name, licenseType:licenseType, location:location, resourceGroup:resourceGroup, id:id, ResourceType:type, State:status}"
+            
+            # Build instance pool query
+            $instancePoolsQuery = "[?licenseType!='${LicenseType}'"
+            
+            # Add resource group filter if specified
+            if ($rgFilter) {
+                $instancePoolsQuery += " && $rgFilter"
             }
+            
+            # Add name filter if ResourceName specified
+            if ($ResourceName) {
+                $instancePoolsQuery += " && name=='$ResourceName'"
+            }
+            
+            # Add tags filter if specified
+            if ($tagsFilter) {
+                $instancePoolsQuery += " $tagsFilter"
+            }
+            
+            $instancePoolsQuery += "].{name:name, licenseType:licenseType, location:location, resourceGroup:resourceGroup, id:id, ResourceType:type, State:status}"
+            
             $instancePools = az sql instance-pool list --query $instancePoolsQuery -o json 2>$null | ConvertFrom-Json 
             $poolsToUpdate = $instancePools | Where-Object { $_.licenseType -ne $LicenseType }
             if($poolsToUpdate.Count -eq 0) {
@@ -452,7 +649,7 @@ foreach ($sub in $subscriptions) {
                     TenantID            = $TenantId
                     SubID               = ($pool.id -split '/')[2]
                     ResourceName        = $pool.name
-                    ResourceType        = $pool.ResoureType
+                    ResourceType        = $pool.ResourceType
                     Status              = $pool.State
                     OriginalLicenseType = $pool.licenseType
                     ResourceGroup       = $pool.resourceGroup
@@ -473,25 +670,30 @@ foreach ($sub in $subscriptions) {
         try {
             Write-Output "Processing DataFactory SSIS Integration Runtime resources..."
             Get-AzDataFactoryV2 | Where-Object { $_.ProvisioningState -eq "Succeeded" } | ForEach-Object {
-                Get-AzDataFactoryV2IntegrationRuntime -ResourceGroupName $_.ResourceGroupName -DataFactoryName $_.DataFactoryName | Where-Object { $_.Type -eq "Managed" -and $_.State -ne "Starting" } | ForEach-Object {
-                    if ($_.LicenseType -ne $LicenseType) {
-                        # Collect data before modification
-                        $modifiedResources += [PSCustomObject]@{
-                            TenantID            = $TenantId
-                            SubID               = ($_.Id -split '/')[2]
-                            ResourceName        = $_.Name
-                            ResourceType        = "Microsoft.DataFactory/factories/integrationRuntimes"
-                            Status              = $_.State
-                            OriginalLicenseType = $_.LicenseType
-                            ResourceGroup       = $_.ResourceGroupName
-                            Location            = $_.Location
-                        }
-                        # Update the license type to $LicenseType.
-                        if (-not $ReportOnly) {
-                            $result = Set-AzDataFactoryV2IntegrationRuntime -ResourceGroupName $_.ResourceGroupName -DataFactoryName $_.DataFactoryName -Name $_.Name -LicenseType $LicenseType -Force
-                            $finalStatus += $result                       
-                            Write-Host ([Environment]::NewLine + "-- DataFactory '$($_.DataFactoryName)' integration runtime updated to license type $LicenseType")
-                        }
+                $df = $_
+                Get-AzDataFactoryV2IntegrationRuntime -ResourceGroupName $df.ResourceGroupName -DataFactoryName $df.DataFactoryName | 
+                Where-Object { 
+                    $_.Type -eq "Managed" -and 
+                    $_.State -ne "Starting" -and 
+                    $_.LicenseType -ne $LicenseType -and
+                    ($null -eq $ResourceName -or $_.Name -eq $ResourceName)
+                } | ForEach-Object {
+                    # Collect data before modification
+                    $modifiedResources += [PSCustomObject]@{
+                        TenantID            = $TenantId
+                        SubID               = ($_.Id -split '/')[2]
+                        ResourceName        = $_.Name
+                        ResourceType        = "Microsoft.DataFactory/factories/integrationRuntimes"
+                        Status              = $_.State
+                        OriginalLicenseType = $_.LicenseType
+                        ResourceGroup       = $df.ResourceGroupName
+                        Location            = $df.Location
+                    }
+                    # Update the license type to $LicenseType.
+                    if (-not $ReportOnly) {
+                        $result = Set-AzDataFactoryV2IntegrationRuntime -ResourceGroupName $df.ResourceGroupName -DataFactoryName $df.DataFactoryName -Name $_.Name -LicenseType $LicenseType -Force
+                        $finalStatus += $result                       
+                        Write-Host ([Environment]::NewLine + "-- DataFactory '$($df.DataFactoryName)' integration runtime updated to license type $LicenseType")
                     }
                 }
             }
@@ -524,4 +726,9 @@ if ($modifiedResources.Count -gt 0) {
     Write-Output "No resources were marked for modification. No CSV generated."
 }
 
-write-Output "Azure SQL Update Script completed"
+Write-Output "Azure SQL Update Script completed"
+
+$scriptEndTime = Get-Date
+$executionDuration = $scriptEndTime - $scriptStartTime
+Write-Output "Script execution ended at: $($scriptEndTime.ToString('yyyy-MM-dd HH:mm:ss'))"
+Write-Output "Total execution time: $($executionDuration.ToString('hh\:mm\:ss'))"

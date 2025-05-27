@@ -51,7 +51,7 @@
 
 param (
     [Parameter (Mandatory=$false)]
-    [string] $SubId,
+    [string] $SubId="216b4c73-ee15-4ce0-957b-0a3bc0ec9975",
 
     [Parameter (Mandatory= $false)]
     [string] $ResourceGroup,
@@ -82,48 +82,83 @@ param (
     [object] $ExclusionTags,
 
     [Parameter (Mandatory= $false)]
-    [string] $TenantId,
+    [string] $TenantId="bad63398-8c5a-4af1-a2f8-b95c2f57d2b3",
 
     [Parameter (Mandatory= $false)]
-    [switch] $ReportOnly,
+    [switch] $ReportOnly=$true,
    
     [Parameter (Mandatory= $false)]
-    [switch] $UseManagedIdentity
-
+    [switch] $UseManagedIdentity,
+    [Parameter (Mandatory= $false)]
+    [int] $batchSize = 500
 )
+
+$scriptStartTime = Get-Date
+Write-Output "Script execution started at: $($scriptStartTime.ToString('yyyy-MM-dd HH:mm:ss'))"
+
 
 function Connect-Azure {
     [CmdletBinding()]
     param(
-         [Parameter (Mandatory= $true)]
-         [string] $TenantId,
+        [Parameter(Mandatory=$false)]
+        [string] $TenantId = $null,
 
-         [Parameter (Mandatory= $false)]
-         [switch]$UseManagedIdentity
+        [Parameter(Mandatory=$false)]
+        [switch] $UseManagedIdentity
     )
 
-    # 1) Detect environment
-    $envType = "Local"
-    if ($env:AZUREPS_HOST_ENVIRONMENT -and $env:AZUREPS_HOST_ENVIRONMENT -like 'cloud-shell*') {
-        $envType = "CloudShell"
+    # 1) Detect host environment
+    $envType = 'Local'
+    if ($env:AZUREPS_HOST_ENVIRONMENT -like 'cloud-shell*') {
+        $envType = 'CloudShell'
     }
-    elseif (($env:AZUREPS_HOST_ENVIRONMENT -and $env:AZUREPS_HOST_ENVIRONMENT -like 'AzureAutomation*') -or $PSPrivateMetadata.JobId) {
-        $envType = "AzureAutomation"
-        $UseManagedIdentity=$true
+    elseif (($env:AZUREPS_HOST_ENVIRONMENT -like 'AzureAutomation*') -or $PSPrivateMetadata.JobId) {
+        $envType = 'AzureAutomation'
+        $UseManagedIdentity = $true
     }
-    Write-Verbose "Environment detected: $envType"
+    Write-Output "Environment detected: $envType"
 
     # 2) Ensure Az.PowerShell context
-    Write-Output "Not connected to Azure PowerShell. Running Connect-AzAccount..."
-    if ($UseManagedIdentity -or $envType -eq 'AzureAutomation') {
-        $ctx = Connect-AzAccount -Tenant $TenantId -Identity -ErrorAction Stop | Out-Null
+    $currentCtx = Get-AzContext -ErrorAction SilentlyContinue
+    if ($currentCtx -and $currentCtx.Account) {
+        if ($TenantId) {
+            if ($currentCtx.Tenant.Id -eq $TenantId) {
+                Write-Output "Already in Az tenant $TenantId"
+            }
+            else {
+                Write-Output "Switching Az context to tenant $TenantId without re-authentication"
+                $newContext = Set-AzContext -Tenant $TenantId -ErrorAction SilentlyContinue
+                if($null -eq $newContext -or $newContext.TenantId -ne $TenantId)
+                {
+                  Connect-AzAccount -Tenant $TenantId  | Out-Null
+                }
+            } 
+        }
+        else {
+            Write-Output "Using existing Az context: Tenant $($currentCtx.Tenant.Id)"
+        }
     }
     else {
-        $ctx = Connect-AzAccount -Tenant $TenantId -ErrorAction Stop | Out-Null
+        Write-Output "Not connected to Az PowerShell—authenticating..."
+        if ($UseManagedIdentity) {
+            if ($TenantId) {
+                Connect-AzAccount -Identity -Tenant $TenantId  | Out-Null
+            }
+            else {
+                Connect-AzAccount -Identity -ErrorAction Stop | Out-Null
+            }
+        }
+        else {
+            if ($TenantId) {
+                Connect-AzAccount -Tenant $TenantId | Out-Null
+            }
+            else {
+                Connect-AzAccount | Out-Null
+            }
+        }
+        $ctx = Get-AzContext
+        Write-Output "Connected to Az PowerShell as: $($ctx.Account) in tenant $($ctx.Tenant.Id)"
     }
-    Write-Output "Connected to Azure PowerShell as: $($ctx.Account)"
-
-
 }
 
 
@@ -138,44 +173,33 @@ if($null -ne $ExclusionTags){
         }
     }
 }
+# Ensure connection with both PowerShell and CLI.
+if($UseManagedIdentity -or $envType -eq 'AzureAutomation') {
+    if ($TenantId) {
+        Connect-Azure -TenantId $TenantId -UseManagedIdentity $UseManagedIdentity
+    } else {
+        Connect-Azure -UseManagedIdentity $UseManagedIdentity
+    }
+} else {
+    if ($TenantId) {
+        Connect-Azure -TenantId $TenantId
+    } else {
+        Connect-Azure
+    }
+}
+
+$context = Get-AzContext -ErrorAction SilentlyContinue
+Write-Output "Connected to Azure as: $($context.Account)"
 
 if (-not $TenantId) {
-    $TenantId =  (Get-AzContext).Tenant.Id
+    $TenantId = $context.Tenant.Id
     Write-Output "No TenantId provided. Using current context TenantId: $TenantId"
 } else {
     Write-Output "Using provided TenantId: $TenantId"
 }
-# Ensure connection with both PowerShell and CLI.
-if ($UseManagedIdentity) {
-    Connect-Azure ($TenantId, $UseManagedIdentity)
-}else{
-    Connect-Azure ($TenantId)
-}
+
 
 # Ensure the required modules are imported
-
-
-# Ensure NuGet provider is available
-if (-not (Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue)) {
-    Install-PackageProvider -Name NuGet -Force
-}
-
-# Check if Az module is installed
-$installedModule = Get-InstalledModule -Name Az -ErrorAction SilentlyContinue
-
-if (-not $installedModule) {
-    Write-Host "Az module not found. Installing latest version..."
-    Install-Module -Name Az -Scope CurrentUser -Repository PSGallery -Force
-} else {
-    # Get the latest version available in the PSGallery
-    $latestVersion = (Find-Module -Name Az -Repository PSGallery).Version
-    if ($installedModule.Version -lt $latestVersion) {
-        Write-Host "Az module is outdated. Updating to latest version..."
-        Update-Module -Name Az -Force
-    } else {
-        Write-Host "Az module is already up to date. No action needed."
-    }
-}
 
 try{
     Import-Module Az.Accounts
@@ -200,10 +224,10 @@ $modifiedResources = @()
 if ($SubId -like "*.csv") {
     $subscriptions = Import-Csv $SubId
 }elseif($SubId -ne "") {
-    $subscriptions = Get-AzSubscription -SubscriptionId $SubId | Sort-Object TenantId
-
+    Write-Output "Passed Subscription $($SubId)"
+    $subscriptions = Get-AzSubscription -SubscriptionId $SubId
 }else {
-    $subscriptions = Get-AzSubscription | Where-Object { $_.TenantId -eq $tenantId } 
+    $subscriptions = Get-AzSubscription | Where-Object { $_.TenantId -eq $tenantId }
 }
 
 # Handle MachineName input (single or CSV)
@@ -258,7 +282,7 @@ foreach ($sub in $subscriptions) {
 
     $query += "
     | extend machineId = tolower(tostring(id))
-    | project machineId, machineName = name
+    | project machineId, machineName = tolower(name)
     | join kind= inner (
         resources
         | where subscriptionId =~ '$($sub.Id)'
@@ -269,27 +293,38 @@ foreach ($sub in $subscriptions) {
         | extend extensionName = name
         | extend extensionPublisher = properties.publisher
         | extend extensionType = properties.type
-        | parse id with '/subscriptions/' subscriptionId '/resourceGroups/' resourceGroup '/providers/Microsoft.HybridCompute/machines/' machineName '/extensions/' extensionName
-    ) on `$left.machineName == `$right.machineName
+        | parse id with '/subscriptions/' subscriptionId '/resourceGroups/' resourceGroup '/providers/Microsoft.HybridCompute/machines/' machineNameRaw '/extensions/' extensionName
+        | extend machineName = tolower(machineNameRaw)
+        ) on `$left.machineName == `$right.machineName
     | project machineName, extensionName, resourceGroup, location, subscriptionId, extensionPublisher, extensionType
-    "
+    | order by machineName asc"
+   
+    $skipToken = $null
 
-    #Write-Output $query
+    Write-Output $query
 
-    $resources = Search-AzGraph -Query "$($query)" 
     Write-Output "Found $($resources.Count) resource(s) to update"
-    $count = $resources.Count
+    $allResults = [System.Collections.Generic.List[PSObject]]::new()
+    do{
+        $resources = Search-AzGraph -Query "$($query)" -First $batchSize -SkipToken $skipToken
+        $allResults.AddRange($resources)
+        $skipToken = $resources.SkipToken
+    }while($skipToken)
+
+
+    $count = $allResults.Count
+
     
     while($count -gt 0) {
         $count-=1
         $setID = @{
-            MachineName = $resources[$count].MachineName
-            Name = $resources[$count].extensionName
-            ResourceGroup = $resources[$count].resourceGroup
-            Location = $resources[$count].location
-            SubscriptionId = $resources[$count].subscriptionId
-            Publisher = $resources[$count].extensionPublisher
-            ExtensionType = $resources[$count].extensionType
+            MachineName = $allResults[$count].MachineName
+            Name = $allResults[$count].extensionName
+            ResourceGroup = $allResults[$count].resourceGroup
+            Location = $allResults[$count].location
+            SubscriptionId = $allResults[$count].subscriptionId
+            Publisher = $allResults[$count].extensionPublisher
+            ExtensionType = $allResults[$count].extensionType
         }
 
         write-Output "   MachineName - $($setID.MachineName)"
@@ -407,6 +442,7 @@ foreach ($sub in $subscriptions) {
                 Write-Output "ReportOnly mode enabled. Skipping modification for: $($setID.MachineName)"
             }
         }
+        
     }
     }
 }
@@ -421,3 +457,8 @@ if ($modifiedResources.Count -gt 0) {
 }
 
 write-Output "Arc SQL Update Script completed"
+
+$scriptEndTime = Get-Date
+$executionDuration = $scriptEndTime - $scriptStartTime
+Write-Output "Script execution ended at: $($scriptEndTime.ToString('yyyy-MM-dd HH:mm:ss'))"
+Write-Output "Total execution time: $($executionDuration.ToString('hh\:mm\:ss'))"
