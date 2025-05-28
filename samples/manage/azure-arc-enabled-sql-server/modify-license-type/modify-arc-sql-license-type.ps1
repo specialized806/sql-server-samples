@@ -85,7 +85,7 @@ param (
     [string] $TenantId,
 
     [Parameter (Mandatory= $false)]
-    [switch] $ReportOnly=$true,
+    [switch] $ReportOnly,
    
     [Parameter (Mandatory= $false)]
     [switch] $UseManagedIdentity,
