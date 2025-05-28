@@ -51,7 +51,7 @@
 
 param (
     [Parameter (Mandatory=$false)]
-    [string] $SubId="216b4c73-ee15-4ce0-957b-0a3bc0ec9975",
+    [string] $SubId,
 
     [Parameter (Mandatory= $false)]
     [string] $ResourceGroup,

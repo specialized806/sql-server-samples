@@ -59,7 +59,7 @@ The scripts is seamlessly integrated with Azure Authentication. It uses managed 
 |:--|:--|:--|
 |`-SubId`|`subscription_id` *or* a file_name|Optional: Subscription id or a .csv file with the list of subscriptions<sup>1</sup>. If not specified all subscriptions will be scanned|
 |`-ResourceGroup` |`resource_group_name`|Optional: Limits the scope  to a specific resource group|
-|`-ResourceName` |`resource_name`|Optional: Limits the scope  to a specific resource |
+|`-ResourceName` |`resource_name`|Optional: Limits the scope  to resouyrces associated with this name. For SQL Server - updates all databases under the specified server. For SQL Managed Instance - updates the specified instance. For SQL VM - updates the specified VM |
 |`-LicenseType` | `LicenseIncluded` (default) or `BasePrice` | Optional: Sets the license type to the specified value |
 |`-ExclusionTags`| `{"name":"value","name":"value"}` |*Optional*. If specified, excludes the resources that have this tag assigned.|
 |`-TenantId`| `tenant_id` |*Optional*. If specified, uses this tenant id to log in. Otherwise, the current context is used.|

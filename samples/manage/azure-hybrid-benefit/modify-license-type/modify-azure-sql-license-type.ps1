@@ -24,10 +24,7 @@
 .PARAMETER ResourceGroup
     Optional. Limit the scope to a specific resource group.
 
-.PARAMETER ResourceName
-    Optional. Limit the scope to a specific resource.
-
-    .PARAMETER LicenseType
+.PARAMETER LicenseType
     Optional. License type to set. Allowed values: "LicenseIncluded" (default) or "BasePrice".
 
 .PARAMETER ExclusionTags
@@ -51,10 +48,10 @@
 
 param (
     [Parameter(Mandatory = $false)]
-    [string] $SubId="216b4c73-ee15-4ce0-957b-0a3bc0ec9975",
+    [string] $SubId,
     
     [Parameter(Mandatory = $false)]
-    [string] $ResourceGroup="PayGoDBTest",
+    [string] $ResourceGroup,
     
     [Parameter(Mandatory = $false)]
     [ValidateSet("LicenseIncluded", "BasePrice", IgnoreCase = $false)]
@@ -64,7 +61,7 @@ param (
     [object] $ExclusionTags,
 
     [Parameter (Mandatory= $false)]
-    [string] $TenantId="bad63398-8c5a-4af1-a2f8-b95c2f57d2b3",
+    [string] $TenantId,
 
     [Parameter (Mandatory= $false)]
     [switch] $ReportOnly,
@@ -73,7 +70,7 @@ param (
     [switch] $UseManagedIdentity,
     
     [Parameter (Mandatory= $false)]
-    [string] $ResourceName="paygodb"
+    [string] $ResourceName
 )
 
 
