@@ -82,7 +82,7 @@ param (
     [object] $ExclusionTags,
 
     [Parameter (Mandatory= $false)]
-    [string] $TenantId="bad63398-8c5a-4af1-a2f8-b95c2f57d2b3",
+    [string] $TenantId,
 
     [Parameter (Mandatory= $false)]
     [switch] $ReportOnly=$true,
