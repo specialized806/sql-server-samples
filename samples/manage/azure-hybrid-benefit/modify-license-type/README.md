@@ -18,6 +18,8 @@ ms.date: 06/21/2025
 
     05/13/2025 - Modified to fix errors and to remove the auto-start of the offline resources.
 
+    05/30/2025 - Added transcript support
+
 
 # Overview
 
