@@ -136,8 +136,7 @@ $finalStatus = @()
 
 # Convert to hashtable explicitly
 $tagTable = @{}
-if(
-    $null -ne $ExclusionTags){
+if($ExclusionTags){
     if($ExclusionTags.GetType().Name -eq "Hashtable"){
         $tagTable = $ExclusionTags    
     }else{
@@ -391,15 +390,16 @@ foreach ($sub in $subscriptions) {
         }
 
         # --- Section: Update SQL Databases and Elastic Pools ---
+       
         try {
-            Write-Output "Querying SQL Servers within this subscription..."
+             Write-Output   "Querying SQL Servers within this subscription..."
             
             # First, let's verify we're in the right subscription context
             $currentSubContext = az account show --query id -o tsv
-            Write-Output "Currently in subscription context: $currentSubContext"
+             Write-Output   "Currently in subscription context: $currentSubContext"
             
             if ($currentSubContext -ne $sub.id) {
-                Write-Output "Subscription context mismatch! Re-setting context..."
+                 Write-Output   "Subscription context mismatch! Re-setting context..."
                 az account set --subscription $sub.id
             }
             
@@ -427,7 +427,6 @@ foreach ($sub in $subscriptions) {
                     }
                 }
                 
-
                 # Add tag filter if specified
                 if ($tagsFilter -and $filterAdded) {
                     $serverQuery += "$tagsFilter"
@@ -442,45 +441,43 @@ foreach ($sub in $subscriptions) {
             }
             
             # Output the query for debugging
-            Write-Output "SQL Server query: $serverQuery"
+             Write-Output   "SQL Server query: $serverQuery"
             
-            <# Get all servers first as a fallback in case the query fails
+            # Get all servers first as a fallback in case the query fails
             $allServers = az sql server list -o json | ConvertFrom-Json
-            Write-Output "Found a total of $($allServers.Count) SQL Servers in subscription"
-            #>
+             Write-Output   "Found a total of $($allServers.Count) SQL Servers in subscription"
             
             # Now try the filtered query
             $servers = az sql server list --query "$serverQuery" -o json | ConvertFrom-Json
             
             # Verify if we got any results
             if ($null -eq $servers -or $servers.Count -eq 0) {
-                Write-Output "WARNING: No SQL Servers found with the specified filters."
-                <# Write-Output "Available SQL Servers in subscription:"
+                 Write-Output   "WARNING: No SQL Servers found with the specified filters."
+                 Write-Output   "Available SQL Servers in subscription:"
                 $allServers | ForEach-Object {
-                    Write-Output "  - $($_.name) (Resource Group: $($_.resourceGroup))"
+                     Write-Output   "  - $($_.name) (Resource Group: $($_.resourceGroup))"
                 }
-                #>
                 
                 # Use all servers if no specific resource name was provided
                 if (-not $ResourceName) {
-                    Write-Output "Proceeding with all SQL Servers since no specific ResourceName was provided."
+                     Write-Output   "Proceeding with all SQL Servers since no specific ResourceName was provided."
                     $servers = $allServers
                 }
             } else {
-                Write-Output "Found $($servers.Count) SQL Servers matching the criteria."
+                 Write-Output   "Found $($servers.Count) SQL Servers matching the criteria."
                 $servers | ForEach-Object {
-                    Write-Output "  - $($_.name) (Resource Group: $($_.resourceGroup))"
+                     Write-Output   "  - $($_.name) (Resource Group: $($_.resourceGroup))"
                 }
             }
 
             # Process each server
             foreach ($server in $servers) {
                 # Update SQL Databases
-                Write-Output "Scanning SQL Databases on server '$($server.name)' in resource group '$($server.resourceGroup)'..."
+                 Write-Output   "Scanning SQL Databases on server '$($server.name)' in resource group '$($server.resourceGroup)'..."
                 
                 # First get all databases to check if any exist
                 $allDbs = az sql db list --resource-group $server.resourceGroup --server $server.name -o json | ConvertFrom-Json
-                Write-Output "Found a total of $($allDbs.Count) databases on server '$($server.name)'"
+                 Write-Output   "Found a total of $($allDbs.Count) databases on server '$($server.name)'"
                 
                 # Build database query with better error handling
                 $dbQuery = "[?licenseType!=null && licenseType!='$($LicenseType)'"
@@ -492,20 +489,20 @@ foreach ($sub in $subscriptions) {
                 
                 $dbQuery += "].{name:name, licenseType:licenseType, location:location, resourceGroup:resourceGroup, id:id, ResourceType:type, State:status}"
                 
-                Write-Output "Database query: $dbQuery"
+                 Write-Output   "Database query: $dbQuery"
                 
                 # Get databases with error handling
                 try {
                     $dbs = az sql db list --resource-group $server.resourceGroup --server $server.name --query "$dbQuery" -o json | ConvertFrom-Json
                     
                     if ($null -eq $dbs) {
-                        Write-Output "No SQL Databases found on Server $($server.name) that require a license update."
+                         Write-Output   "No SQL Databases found on Server $($server.name) that require a license update."
                     } elseif ($dbs.Count -eq 0) {
-                        Write-Output "No SQL Databases found on Server $($server.name) that require a license update."
+                         Write-Output   "No SQL Databases found on Server $($server.name) that require a license update."
                     } else {
-                        Write-Output "Found $($dbs.Count) SQL Databases on Server $($server.name) that require a license update:"
+                         Write-Output   "Found $($dbs.Count) SQL Databases on Server $($server.name) that require a license update:"
                         $dbs | ForEach-Object {
-                            Write-Output "  - $($_.name) (Current license: $($_.licenseType))"
+                             Write-Output   "  - $($_.name) (Current license: $($_.licenseType))"
                         }
                         
                         foreach ($db in $dbs) {
@@ -522,36 +519,36 @@ foreach ($sub in $subscriptions) {
                             }
                             
                             if (-not $ReportOnly) {
-                                Write-Output "Updating SQL Database '$($db.name)' on server '$($server.name)' to license type '$LicenseType'..."
+                                 Write-Output   "Updating SQL Database '$($db.name)' on server '$($server.name)' to license type '$LicenseType'..."
                                 try {
                                     $result = az sql db update --name $db.name --server $server.name --resource-group $server.resourceGroup --set licenseType=$LicenseType -o json | ConvertFrom-Json
                                     if ($result) {
-                                        Write-Output "Successfully updated database '$($db.name)' license to '$LicenseType'"
+                                         Write-Output   "Successfully updated database '$($db.name)' license to '$LicenseType'"
                                         $finalStatus += $result
                                     } else {
-                                        Write-Error "Failed to update database '$($db.name)' license. No result returned."
+                                         Write-Output   "Failed to update database '$($db.name)' license. No result returned."
                                     }
                                 } catch {
-                                    Write-Error "Error updating database '$($db.name)': $_"
+                                     Write-Output   "Error updating database '$($db.name)': $_"
                                 }
                             }
                         }
                     }
                 } catch {
-                    Write-Error "Error querying databases on server '$($server.name)': $_"
+                     Write-Output   "Error querying databases on server '$($server.name)': $_"
                 }
 
                 # Update Elastic Pools with similar improved error handling
                 try {
-                    Write-Output "Scanning Elastic Pools on server '$($server.name)'..."
+                     Write-Output   "Scanning Elastic Pools on server '$($server.name)'..."
                     
                     # First check if there are any elastic pools
                     $allPools = az sql elastic-pool list --resource-group $server.resourceGroup --server $server.name --only-show-errors -o json 2>$null | ConvertFrom-Json -ErrorAction SilentlyContinue
                     
                     if ($null -eq $allPools -or $allPools.Count -eq 0) {
-                        Write-Output "No Elastic Pools found on server '$($server.name)'."
+                         Write-Output   "No Elastic Pools found on server '$($server.name)'."
                     } else {
-                        Write-Output "Found $($allPools.Count) total Elastic Pools on server '$($server.name)'."
+                         Write-Output   "Found $($allPools.Count) total Elastic Pools on server '$($server.name)'."
                         
                         # Build elastic pool query with better formatting
                         $elasticPoolQuery = "[?licenseType!=null && licenseType!='$($LicenseType)'"
@@ -563,16 +560,16 @@ foreach ($sub in $subscriptions) {
                         
                         $elasticPoolQuery += "].{name:name, licenseType:licenseType, location:location, resourceGroup:resourceGroup, id:id, ResourceType:type, State:state}"
                         
-                        Write-Output "Elastic Pool query: $elasticPoolQuery"
+                         Write-Output   "Elastic Pool query: $elasticPoolQuery"
                         
                         $elasticPools = az sql elastic-pool list --resource-group $server.resourceGroup --server $server.name --query "$elasticPoolQuery" --only-show-errors -o json 2>$null | ConvertFrom-Json -ErrorAction SilentlyContinue
                         
                         if ($null -eq $elasticPools -or $elasticPools.Count -eq 0) {
-                            Write-Output "No Elastic Pools found on Server $($server.name) that require a license update."
+                             Write-Output   "No Elastic Pools found on Server $($server.name) that require a license update."
                         } else {
-                            Write-Output "Found $($elasticPools.Count) Elastic Pools on Server $($server.name) that require a license update:"
+                             Write-Output   "Found $($elasticPools.Count) Elastic Pools on Server $($server.name) that require a license update:"
                             $elasticPools | ForEach-Object {
-                                Write-Output "  - $($_.name) (Current license: $($_.licenseType))"
+                                 Write-Output   "  - $($_.name) (Current license: $($_.licenseType))"
                             }
                             
                             foreach ($pool in $elasticPools) {
@@ -589,28 +586,28 @@ foreach ($sub in $subscriptions) {
                                 }
                                 
                                 if (-not $ReportOnly) {
-                                    Write-Output "Updating Elastic Pool '$($pool.name)' on server '$($server.name)' to license type '$LicenseType'..."
+                                     Write-Output   "Updating Elastic Pool '$($pool.name)' on server '$($server.name)' to license type '$LicenseType'..."
                                     try {
                                         $result = az sql elastic-pool update --name $pool.name --server $server.name --resource-group $server.resourceGroup --set licenseType=$LicenseType --only-show-errors -o json 2>$null | ConvertFrom-Json -ErrorAction SilentlyContinue
                                         if ($result) {
-                                            Write-Output "Successfully updated elastic pool '$($pool.name)' license to '$LicenseType'"
+                                             Write-Output   "Successfully updated elastic pool '$($pool.name)' license to '$LicenseType'"
                                             $finalStatus += $result
                                         } else {
-                                            Write-Error "Failed to update elastic pool '$($pool.name)' license. No result returned."
+                                             Write-Output   "Failed to update elastic pool '$($pool.name)' license. No result returned."
                                         }
                                     } catch {
-                                        Write-Error "Error updating elastic pool '$($pool.name)': $_"
+                                         Write-Output   "Error updating elastic pool '$($pool.name)': $_"
                                     }
                                 }
                             }
                         }
                     }
                 } catch {
-                    Write-Error "Error processing Elastic Pools on server '$($server.name)': $_"
+                     Write-Output   "Error processing Elastic Pools on server '$($server.name)': $_"
                 }
             }
         } catch {
-            Write-Error "An error occurred while processing SQL Databases or Elastic Pools: $_"
+             Write-Output   "An error occurred while processing SQL Databases or Elastic Pools: $_"
         }
 
         # --- Section: Update SQL Instance Pools ---
@@ -675,7 +672,7 @@ foreach ($sub in $subscriptions) {
             Get-AzDataFactoryV2 | 
             Where-Object { 
                 $_.ProvisioningState -eq "Succeeded" -and
-                ($null -eq $ResourceGroup -or $_.ResourceGroupName -eq $ResourceGroup)
+                ([string]::IsNullOrEmpty($ResourceGroup) -or $_.ResourceGroupName -eq $ResourceGroup)
             } | 
             ForEach-Object {
                 $df = $_
@@ -684,7 +681,7 @@ foreach ($sub in $subscriptions) {
                     $_.Type -eq "Managed" -and 
                     $_.State -ne "Starting" -and 
                     $_.LicenseType -ne $LicenseType -and
-                    ($null -eq $ResourceName -or $_.Name -eq $ResourceName)
+                    ([string]::IsNullOrEmpty($ResourceName) -or $_.Name -eq $ResourceName)
                 }
 
                 if ($IRs.Count -eq 0) {
