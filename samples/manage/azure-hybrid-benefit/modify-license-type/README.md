@@ -67,7 +67,7 @@ The scripts is seamlessly integrated with Azure Authentication. It uses managed 
 |`-ResourceGroup` |`resource_group_name`|Optional: Limits the scope  to a specific resource group|
 |`-ResourceName` |`resource_name`|Optional: Limits the scope  to resources associated with this name. For SQL Server - updates all databases under the specified server. For SQL Managed Instance - updates the specified instance. For SQL VM - updates the specified VM |
 |`-LicenseType` | `LicenseIncluded` (default) or `BasePrice` | Optional: Sets the license type to the specified value |
-|`-ExclusionTags`| `{"tag1":"value1","tag2":"value2"}` |*Optional*. If specified, excludes the resources that have these tags assigned.|
+|`-ExclusionTags`| `'{"tag1":"value1","tag2":"value2"}'` |*Optional*. If specified, excludes the resources that have these tags assigned.|
 |`-TenantId`| `tenant_id` |*Optional*. If specified, uses this tenant id to log in. Otherwise, the current context is used.|
 |`-ReportOnly`| |*Optional*. If true, generates a csv file with the list of resources that are to be modified, but doesn't make the actual change.|
 |`-UseManagedIdentity`| |*Optional*. If true, logs in both PowerShell and CLI using managed identity. Required to run the script as a runbook.|
@@ -119,18 +119,36 @@ The following command will scan all the subscriptions in tenant `<tenant_id>`, a
 
 ## Example 2
 
+The following commands will create a list of production subscriptions in tenant `<tenant_id>`, and generates the list of the resources that would change the license type to "LicenseIncluded".
+
+```PowerShell
+$tenantId = "<tenant-id>"
+Get-AzSubscription -TenantId $tenantId | Where-Object {
+    $sub = $_
+    $details = Get-AzSubscription -SubscriptionId $sub.Id -TenantId $tenantId
+    if ($details -and $details.ExtendedProperties -and $details.ExtendedProperties.SubscriptionPolicies) {
+        $quotaId = ($details.ExtendedProperties.SubscriptionPolicies | ConvertFrom-Json).quotaId
+        return $quotaId -notmatch 'MSDN|DEV|VS|TEST'
+    }
+    return $false
+} | Export-Csv .\mysubscriptions.csv -NoTypeInformation
+.\modify-azure-sql-license-type.ps1 -TenantId <tenant_id> -SubId .\mysubscriptions.csv -LicenseType LicenseIncluded -ReportOnly
+```
+
+## Example 3
+
 The following command will scan resource group `<resource_group_name>` in the subscription `<sub_id>` within the current tenant, set the license type value to "LicenseIncluded" on each resource that has a different license type.
 
 ```PowerShell
 .\modify-azure-sql-license-type.ps1 -SubId <sub_id> -ResourceGroup <resource_group_name> -LicenseType LicenseIncluded 
 ```
 
-## Example 3
+## Example 4
 
 The following command will scan all subscriptions in the account using managed identity, set the license type value to "LicenseIncluded" on all resources in tenant <tenant_id> that have a different license type.  The resources with the tag `Environment:Dev` will be excluded.
 
 ```PowerShell
-.\modify-azure-sql-license-type.ps1 -TenantId <tenant_id> -LicenseType LicenseIncluded -UseManagedIdentity -ExclusionTags {"Environment":"Dev"} 
+.\modify-azure-sql-license-type.ps1 -TenantId <tenant_id> -LicenseType LicenseIncluded -UseManagedIdentity -ExclusionTags '{"Environment":"Dev"}' 
 ```
 
 # Running the script using Cloud Shell
