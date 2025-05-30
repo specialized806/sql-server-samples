@@ -17,6 +17,7 @@
 .VERSION
     1.0.0 - Initial version.
     1.0.2 - Modified to fix errors and to remove the auto-start of the offline resources.
+    1.0.3 - Added transcript.
 
 .PARAMETER SubId
     A single subscription ID or a CSV file name containing a list of subscriptions.
@@ -431,7 +432,7 @@ foreach ($sub in $subscriptions) {
                 if ($tagsFilter -and $filterAdded) {
                     $serverQuery += "$tagsFilter"
                 } elseif ($tagsFilter) {
-                    $serverQuery += "?1==1$tagsFilter" # A trick to make the tags filter work when it's the only filter
+                    $serverQuery += "?type=='Microsoft.Sql/servers'$tagsFilter" # A trick to make the tags filter work when it's the only filter
                 }
                 
                 $serverQuery += "]"
@@ -484,7 +485,7 @@ foreach ($sub in $subscriptions) {
                 
                 # Add tags filter if specified
                 if ($tagsFilter) {
-                    $dbQuery += " $tagsFilter"
+                    $dbQuery += "$tagsFilter"
                 }
                 
                 $dbQuery += "].{name:name, licenseType:licenseType, location:location, resourceGroup:resourceGroup, id:id, ResourceType:type, State:status}"
