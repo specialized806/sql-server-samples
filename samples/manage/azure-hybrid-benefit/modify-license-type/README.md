@@ -67,7 +67,7 @@ The scripts is seamlessly integrated with Azure Authentication. It uses managed 
 |`-ResourceGroup` |`resource_group_name`|Optional: Limits the scope  to a specific resource group|
 |`-ResourceName` |`resource_name`|Optional: Limits the scope  to resources associated with this name. For SQL Server - updates all databases under the specified server. For SQL Managed Instance - updates the specified instance. For SQL VM - updates the specified VM |
 |`-LicenseType` | `LicenseIncluded` (default) or `BasePrice` | Optional: Sets the license type to the specified value |
-|`-ExclusionTags`| `{"tag1":"value1","tag2":"value2"}` |*Optional*. If specified, excludes the resources that have these tags assigned.|
+|`-ExclusionTags`| `'{"tag1":"value1","tag2":"value2"}'` |*Optional*. If specified, excludes the resources that have these tags assigned.|
 |`-TenantId`| `tenant_id` |*Optional*. If specified, uses this tenant id to log in. Otherwise, the current context is used.|
 |`-ReportOnly`| |*Optional*. If true, generates a csv file with the list of resources that are to be modified, but doesn't make the actual change.|
 |`-UseManagedIdentity`| |*Optional*. If true, logs in both PowerShell and CLI using managed identity. Required to run the script as a runbook.|
