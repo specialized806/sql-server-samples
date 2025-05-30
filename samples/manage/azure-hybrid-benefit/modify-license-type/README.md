@@ -32,6 +32,12 @@ This script is designed to help administrators standardize SQL licensing across 
 - SQL Databases & Elastic Pools: Scans individual SQL servers to locate databases and elastic pools with a different license type and updates them accordingly.
 - SQL Instance Pools: Locates instance pools that require an update.
 - DataFactory SSIS Integration Runtimes: Checks for integration runtimes with an out-of-date license setting and updates them.
+ 
+> [!IMPORTANT]
+> - SQL Virtual Machines must be in PowerState = "VM running" to be updated
+> - SQL Managed Instances must be in State = "Ready" to be updated
+> - DataFactory SSIS Integration Runtimes must be in State = "Stopped" to be updated
+
 
 # Required Permissions
 The automation account needs to have the bellow permissions in order to be able to successfully run the Runbook and update all the SQL Server resources license type:
@@ -42,7 +48,7 @@ The automation account needs to have the bellow permissions in order to be able 
 1. **Data Factory Contributor**: *Data Factory Contributor role*.
 1. **Virtual Machine Contributor**: *Virtual Machine Contributor role*. 
 
-A *Subscription Contributor* role has sufficient permissions to mdify any of the above resources. 
+A *Subscription Contributor* role has sufficient permissions to modify any of the above resources. 
 
 # Interactive Reporting
 
@@ -59,12 +65,26 @@ The scripts is seamlessly integrated with Azure Authentication. It uses managed 
 |:--|:--|:--|
 |`-SubId`|`subscription_id` *or* a file_name|Optional: Subscription id or a .csv file with the list of subscriptions<sup>1</sup>. If not specified all subscriptions will be scanned|
 |`-ResourceGroup` |`resource_group_name`|Optional: Limits the scope  to a specific resource group|
-|`-ResourceName` |`resource_name`|Optional: Limits the scope  to resouyrces associated with this name. For SQL Server - updates all databases under the specified server. For SQL Managed Instance - updates the specified instance. For SQL VM - updates the specified VM |
+|`-ResourceName` |`resource_name`|Optional: Limits the scope  to resources associated with this name. For SQL Server - updates all databases under the specified server. For SQL Managed Instance - updates the specified instance. For SQL VM - updates the specified VM |
 |`-LicenseType` | `LicenseIncluded` (default) or `BasePrice` | Optional: Sets the license type to the specified value |
-|`-ExclusionTags`| `{"name":"value","name":"value"}` |*Optional*. If specified, excludes the resources that have this tag assigned.|
+|`-ExclusionTags`| `{"tag1":"value1","tag2":"value2"}` |*Optional*. If specified, excludes the resources that have these tags assigned.|
 |`-TenantId`| `tenant_id` |*Optional*. If specified, uses this tenant id to log in. Otherwise, the current context is used.|
 |`-ReportOnly`| |*Optional*. If true, generates a csv file with the list of resources that are to be modified, but doesn't make the actual change.|
 |`-UseManagedIdentity`| |*Optional*. If true, logs in both PowerShell and CLI using managed identity. Required to run the script as a runbook.|
+
+<sup>1</sup>You can generate a .csv file that lists only specific subscriptions. E.g., the following command will include only production subscriptions (exclude dev/test).
+```PowerShell
+$tenantId = "<your-tenant-id>"
+Get-AzSubscription -TenantId $tenantId | Where-Object {
+    $sub = $_
+    $details = Get-AzSubscription -SubscriptionId $sub.Id -TenantId $tenantId
+    if ($details -and $details.ExtendedProperties -and $details.ExtendedProperties.SubscriptionPolicies) {
+        $quotaId = ($details.ExtendedProperties.SubscriptionPolicies | ConvertFrom-Json).quotaId
+        return $quotaId -notmatch 'MSDN|DEV|VS|TEST'
+    }
+    return $false
+} | Export-Csv .\mysubscriptions.csv -NoTypeInformation
+```
 
 # Logging & Error Handling
 

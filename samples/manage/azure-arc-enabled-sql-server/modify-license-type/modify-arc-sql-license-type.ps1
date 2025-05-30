@@ -93,6 +93,7 @@ param (
     [int] $batchSize = 500
 )
 
+Start-Transcript -Path ".\modify-arc-sql-license-type.log"
 $scriptStartTime = Get-Date
 Write-Output "Script execution started at: $($scriptStartTime.ToString('yyyy-MM-dd HH:mm:ss'))"
 
@@ -139,7 +140,7 @@ function Connect-Azure {
         }
     }
     else {
-        Write-Output "Not connected to Az PowerShell—authenticating..."
+        Write-Output "Not connected to Azure PowerShell. Running Connect-AzAccount..."
         if ($UseManagedIdentity) {
             if ($TenantId) {
                 Connect-AzAccount -Identity -Tenant $TenantId  | Out-Null
@@ -462,3 +463,4 @@ $scriptEndTime = Get-Date
 $executionDuration = $scriptEndTime - $scriptStartTime
 Write-Output "Script execution ended at: $($scriptEndTime.ToString('yyyy-MM-dd HH:mm:ss'))"
 Write-Output "Total execution time: $($executionDuration.ToString('hh\:mm\:ss'))"
+Stop-Transcript
