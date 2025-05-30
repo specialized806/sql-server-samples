@@ -48,14 +48,23 @@ The script accepts the following command line parameters:
 |`-UsePcoreLicense` | `Yes`, `No` | *Optional*. Enables unlimited virtualization license if the value is "Yes" or disables it if the value is "No". To enable, the license type must be "Paid" or "PAYG"|
 |`-EnableESU` | `Yes`, `No` | *Optional*. Enables the ESU policy the value is "Yes" or disables it if the value is "No". To enable, the license type must be "Paid" or "PAYG"|
 |`-Force`| |*Optional*. Forces the change of the license type to the specified value on all installed extensions. If `-Force` is not specified, the `-LicenseType` value is set only if undefined. Ignored if `-LicenseType`  is not specified|
-|`-ExclusionTags`| `{"name":"value","name":"value"}` |*Optional*. If specified, excludes the resources that have this tag assigned.|
+|`-ExclusionTags`| `{"tag1":"value1","tag2":"value2"}` |*Optional*. If specified, excludes the resources that have these tags assigned.|
 |`-TenantId`| `tenant_id` |*Optional*. If specified, uses this tenant id to log in. Otherwise, the current context is used.|
 |`-ReportOnly`| |*Optional*. If true, generates a csv file with the list of resources that are to be modified, but doesn't make the actual change.|
 |`-UseManagedIdentity`| |*Optional*. If true, logs in both PowerShell and CLI using managed identity. Required to run the script as a runbook.|
 
-<sup>1</sup>You can create a .csv file using the following command and then edit to remove the subscriptions you don't  want to scan.
+<sup>1</sup>You can generate a .csv file that lists only specific subscriptions. E.g., the following command will include only production subscriptions (exclude dev/test).
 ```PowerShell
-Get-AzSubscription | Export-Csv .\mysubscriptions.csv -NoTypeInformation
+$tenantId = "<your-tenant-id>"
+Get-AzSubscription -TenantId $tenantId | Where-Object {
+    $sub = $_
+    $details = Get-AzSubscription -SubscriptionId $sub.Id -TenantId $tenantId
+    if ($details -and $details.ExtendedProperties -and $details.ExtendedProperties.SubscriptionPolicies) {
+        $quotaId = ($details.ExtendedProperties.SubscriptionPolicies | ConvertFrom-Json).quotaId
+        return $quotaId -notmatch 'MSDN|DEV|VS|TEST'
+    }
+    return $false
+} | Export-Csv .\mysubscriptions.csv -NoTypeInformation
 ```
 <sup>2</sup>The .csv file must include a column *MachineName*. E.g.:
 ```

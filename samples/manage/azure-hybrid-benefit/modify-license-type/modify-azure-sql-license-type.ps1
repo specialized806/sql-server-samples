@@ -74,6 +74,7 @@ param (
 )
 
 
+Start-Transcript -Path "$env:TEMP\modify-azure-sql-license-type.log"
 $scriptStartTime = Get-Date
 Write-Output "Script execution started at: $($scriptStartTime.ToString('yyyy-MM-dd HH:mm:ss'))"
 
@@ -135,7 +136,8 @@ $finalStatus = @()
 
 # Convert to hashtable explicitly
 $tagTable = @{}
-if($null -ne $ExclusionTags){
+if(
+    $null -ne $ExclusionTags){
     if($ExclusionTags.GetType().Name -eq "Hashtable"){
         $tagTable = $ExclusionTags    
     }else{
@@ -169,23 +171,23 @@ if (-not (Get-PackageProvider -Name NuGet -ErrorAction SilentlyContinue)) {
 $installedModule = Get-InstalledModule -Name Az -ErrorAction SilentlyContinue
 
 if (-not $installedModule) {
-    Write-Host "Az module not found. Installing latest version..."
+    Write-Output "Az module not found. Installing latest version..."
     Install-Module -Name Az -Scope CurrentUser -Repository PSGallery -Force
 } else {
     # Get the latest version available in the PSGallery
     $latestVersion = (Find-Module -Name Az -Repository PSGallery).Version
     if ($installedModule.Version -lt $latestVersion) {
-        Write-Host "Az module is outdated. Updating to latest version..."
+        Write-Output "Az module is outdated. Updating to latest version..."
         Update-Module -Name Az -Force
     } else {
-        Write-Host "Az module is already up to date. No action needed."
+        Write-Output "Az module is already up to date. No action needed."
     }
 }
 
 # Import Az.Accounts with minimum version requirement
 try {
     Import-Module Az.Accounts -MinimumVersion 4.2.0 -Force
-    Write-Host "Az.Accounts module imported successfully."
+    Write-Output "Az.Accounts module imported successfully."
 } catch {
     Write-Error "Failed to import Az.Accounts: $_"
     return
@@ -194,10 +196,10 @@ try {
 # Ensure Az.DataFactory is available and import it
 try {
     if (-not (Get-Module -ListAvailable -Name Az.DataFactory)) {
-        Write-Host "Az.DataFactory module not found. Installing..."
+        Write-Output "Az.DataFactory module not found. Installing..."
         Install-Module -Name Az.DataFactory -Scope CurrentUser -Force
     } else {
-        Write-Host "Az.DataFactory module is already installed."
+        Write-Output "Az.DataFactory module is already installed."
     }
     Import-Module Az.DataFactory -Force
 } catch {
@@ -425,6 +427,7 @@ foreach ($sub in $subscriptions) {
                     }
                 }
                 
+
                 # Add tag filter if specified
                 if ($tagsFilter -and $filterAdded) {
                     $serverQuery += "$tagsFilter"
@@ -441,9 +444,10 @@ foreach ($sub in $subscriptions) {
             # Output the query for debugging
             Write-Output "SQL Server query: $serverQuery"
             
-            # Get all servers first as a fallback in case the query fails
+            <# Get all servers first as a fallback in case the query fails
             $allServers = az sql server list -o json | ConvertFrom-Json
             Write-Output "Found a total of $($allServers.Count) SQL Servers in subscription"
+            #>
             
             # Now try the filtered query
             $servers = az sql server list --query "$serverQuery" -o json | ConvertFrom-Json
@@ -451,10 +455,11 @@ foreach ($sub in $subscriptions) {
             # Verify if we got any results
             if ($null -eq $servers -or $servers.Count -eq 0) {
                 Write-Output "WARNING: No SQL Servers found with the specified filters."
-                Write-Output "Available SQL Servers in subscription:"
+                <# Write-Output "Available SQL Servers in subscription:"
                 $allServers | ForEach-Object {
                     Write-Output "  - $($_.name) (Resource Group: $($_.resourceGroup))"
                 }
+                #>
                 
                 # Use all servers if no specific resource name was provided
                 if (-not $ResourceName) {
@@ -666,31 +671,46 @@ foreach ($sub in $subscriptions) {
         # --- Section: Update DataFactory SSIS Integration Runtimes ---
         try {
             Write-Output "Processing DataFactory SSIS Integration Runtime resources..."
-            Get-AzDataFactoryV2 | Where-Object { $_.ProvisioningState -eq "Succeeded" } | ForEach-Object {
+            Set-AzContext -Subscription $sub.id | Out-Null
+            Get-AzDataFactoryV2 | 
+            Where-Object { 
+                $_.ProvisioningState -eq "Succeeded" -and
+                ($null -eq $ResourceGroup -or $_.ResourceGroupName -eq $ResourceGroup)
+            } | 
+            ForEach-Object {
                 $df = $_
-                Get-AzDataFactoryV2IntegrationRuntime -ResourceGroupName $df.ResourceGroupName -DataFactoryName $df.DataFactoryName | 
+                $IRs = Get-AzDataFactoryV2IntegrationRuntime -ResourceGroupName $df.ResourceGroupName -DataFactoryName $df.DataFactoryName | 
                 Where-Object { 
                     $_.Type -eq "Managed" -and 
                     $_.State -ne "Starting" -and 
                     $_.LicenseType -ne $LicenseType -and
                     ($null -eq $ResourceName -or $_.Name -eq $ResourceName)
-                } | ForEach-Object {
-                    # Collect data before modification
-                    $modifiedResources += [PSCustomObject]@{
-                        TenantID            = $TenantId
-                        SubID               = ($_.Id -split '/')[2]
-                        ResourceName        = $_.Name
-                        ResourceType        = "Microsoft.DataFactory/factories/integrationRuntimes"
-                        Status              = $_.State
-                        OriginalLicenseType = $_.LicenseType
-                        ResourceGroup       = $df.ResourceGroupName
-                        Location            = $df.Location
-                    }
-                    # Update the license type to $LicenseType.
-                    if (-not $ReportOnly) {
-                        $result = Set-AzDataFactoryV2IntegrationRuntime -ResourceGroupName $df.ResourceGroupName -DataFactoryName $df.DataFactoryName -Name $_.Name -LicenseType $LicenseType -Force
-                        $finalStatus += $result                       
-                        Write-Host ([Environment]::NewLine + "-- DataFactory '$($df.DataFactoryName)' integration runtime updated to license type $LicenseType")
+                }
+
+                if ($IRs.Count -eq 0) {
+                    Write-Output "No matching integration runtimes found."
+                } else {
+                    $IRs | ForEach-Object {
+                        $modifiedResources += [PSCustomObject]@{
+                            TenantID            = $TenantId
+                            SubID               = ($_.Id -split '/')[2]
+                            ResourceName        = $_.Name
+                            ResourceType        = "Microsoft.DataFactory/factories/integrationRuntimes"
+                            Status              = $_.State
+                            OriginalLicenseType = $_.LicenseType
+                            ResourceGroup       = $df.ResourceGroupName
+                            Location            = $df.Location
+                        }
+
+                        if (-not $ReportOnly) {
+                            if (-not [string]::IsNullOrEmpty($ResourceName) -and $_.State -ne "Stopped") {
+                                Write-Output "ADF Integration Service '$($_.Name)' is not in stopped state"
+                            } else {
+                                $result = Set-AzDataFactoryV2IntegrationRuntime -ResourceGroupName $df.ResourceGroupName -DataFactoryName $df.DataFactoryName -Name $_.Name -LicenseType $LicenseType -Force
+                                $finalStatus += $result
+                                Write-Output "-- DataFactory '$($df.DataFactoryName)' integration runtime updated to license type $LicenseType"
+                            }
+                        }
                     }
                 }
             }
@@ -729,3 +749,4 @@ $scriptEndTime = Get-Date
 $executionDuration = $scriptEndTime - $scriptStartTime
 Write-Output "Script execution ended at: $($scriptEndTime.ToString('yyyy-MM-dd HH:mm:ss'))"
 Write-Output "Total execution time: $($executionDuration.ToString('hh\:mm\:ss'))"
+Stop-Transcript
