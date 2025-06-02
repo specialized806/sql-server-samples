@@ -80,8 +80,8 @@ $tenantId = "<your-tenant-id>"
 Get-AzSubscription -TenantId $tenantId | Where-Object {
     $sub = $_
     $details = Get-AzSubscription -SubscriptionId $sub.Id -TenantId $tenantId
-    if ($details -and $details.ExtendedProperties -and $details.ExtendedProperties.SubscriptionPolicies) {
-        $quotaId = ($details.ExtendedProperties.SubscriptionPolicies | ConvertFrom-Json).quotaId
+    if ($details -and $details.ExtendedProperties -and $details.ExtendedProperties.SubscriptionPolices) {
+        $quotaId = ($details.ExtendedProperties.SubscriptionPolices | ConvertFrom-Json).quotaId
         return $quotaId -notmatch 'MSDN|DEV|VS|TEST'
     }
     return $false
