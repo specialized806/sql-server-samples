@@ -18,6 +18,7 @@
     1.0.0 - Initial version.
     1.0.2 - Modified to fix errors and to remove the auto-start of the offline resources.
     1.0.3 - Added transcript.
+    1.0.4 - Fixed RG filter for SQL DB
 
 .PARAMETER SubId
     A single subscription ID or a CSV file name containing a list of subscriptions.
@@ -486,6 +487,9 @@ foreach ($sub in $subscriptions) {
                 # Add tags filter if specified
                 if ($tagsFilter) {
                     $dbQuery += "$tagsFilter"
+                }
+                if ($rgFilter) {
+                    $dbQuery += " && $rgFilter"
                 }
                 
                 $dbQuery += "].{name:name, licenseType:licenseType, location:location, resourceGroup:resourceGroup, id:id, ResourceType:type, State:status}"

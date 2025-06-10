@@ -20,6 +20,8 @@ ms.date: 06/21/2025
 
     05/30/2025 - Added transcript support
 
+    06/10/2025 - Fixed a RG filter for SQL DB
+
 
 # Overview
 
