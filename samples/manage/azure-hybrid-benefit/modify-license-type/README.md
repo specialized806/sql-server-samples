@@ -79,7 +79,7 @@ The scripts is seamlessly integrated with Azure Authentication. It uses managed 
 |`-UseManagedIdentity`| |*Optional*. If true, logs in both PowerShell and CLI using managed identity. Required to run the script as a runbook.|
 
 <sup>1</sup>You can generate a .csv file that lists only specific subscriptions. E.g., the following command will include only production subscriptions (exclude dev/test).
-<sup>2</sup>the 
+<sup>2</sup>The script will skip the resources with the LicenseType property set to "DR"
 ```PowerShell
 $tenantId = "<your-tenant-id>"
 Get-AzSubscription -TenantId $tenantId | Where-Object {
