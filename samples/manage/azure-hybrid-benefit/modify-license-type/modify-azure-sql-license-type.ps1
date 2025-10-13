@@ -264,7 +264,7 @@ foreach ($sub in $subscriptions) {
             Write-Output "Seeking SQL Virtual Machines that require a license update to $SqlVmLicenseType..."
             
             # Build SQL VM query
-            $sqlVmQuery = "[?sqlServerLicenseType!='${SqlVmLicenseType}' && sqlServerLicenseType!= 'DR'"
+            $sqlVmQuery = "[?sqlServerLicenseType!='${SqlVmLicenseType}' && sqlServerLicenseType!='DR'"
             
             # Add resource group filter if specified
             if ($rgFilter) {
@@ -296,7 +296,7 @@ foreach ($sub in $subscriptions) {
                 if($null -ne (az vm list --query "[?name=='$($sqlvm.name)' && resourceGroup=='$($sqlvm.resourceGroup)' $tagsFilter]"))
                 {
                     $vmStatus = az vm get-instance-view --resource-group $sqlvm.resourceGroup --name $sqlvm.name --query "{Name:name, ResourceGroup:resourceGroup, PowerState:instanceView.statuses[?starts_with(code, 'PowerState/')].displayStatus | [0]}" -o json | ConvertFrom-Json
-                    if ($vmStatus.PowerState -eq "VM running") {
+                    if (($vmStatus.PowerState -eq "VM running") -and ($sqlvm.sqlServerLicenseType -ne "DR")) {
                         
                         # Collect data before modification
                         $modifiedResources += [PSCustomObject]@{
@@ -313,11 +313,9 @@ foreach ($sub in $subscriptions) {
 
         
                         if (-not $ReportOnly) {
-                            if ($sqlvm.sqlServerLicenseType -ne "DR") { #should not modify a DR replica
-                                Write-Output "Updating SQL VM '$($sqlvm.name)' in RG '$($sqlvm.resourceGroup)' to license type '$SqlVmLicenseType'..."
-                                $result = az sql vm update -n $sqlvm.name -g $sqlvm.resourceGroup --license-type $SqlVmLicenseType -o json | ConvertFrom-Json
-                                $finalStatus += $result
-                            }
+                            Write-Output "Updating SQL VM '$($sqlvm.name)' in RG '$($sqlvm.resourceGroup)' to license type '$SqlVmLicenseType'..."
+                            $result = az sql vm update -n $sqlvm.name -g $sqlvm.resourceGroup --license-type $SqlVmLicenseType -o json | ConvertFrom-Json
+                            $finalStatus += $result
                         }
                     }
                 }
@@ -342,7 +340,7 @@ foreach ($sub in $subscriptions) {
             Write-Output "Processing SQL Managed Instances that are running to $LicenseType..."
             
             # Build Managed Instance query
-            $miRunningQuery = "[?licenseType!='${LicenseType}' && hybridSecondaryUsage!='Passive' && state=='Ready'"
+            $miRunningQuery = "[?licenseType!='${LicenseType}' && licenseType!='DR' && hybridSecondaryUsage!='Passive' && state=='Ready'"
 
             # Add resource group filter if specified
             if ($rgFilter) {
@@ -383,11 +381,9 @@ foreach ($sub in $subscriptions) {
                 }
                 
                 if (-not $ReportOnly) {
-                    if ($mi.licenseType -ne "DR"){ #should not modify a DR replica
-                        Write-Output "Updating SQL Managed Instance '$($mi.name)' in RG '$($mi.resourceGroup)' to license type '$LicenseType'..."
-                        $result = az sql mi update --name $mi.name --resource-group $mi.resourceGroup --license-type $LicenseType -o json | ConvertFrom-Json
-                        $finalStatus += $result
-                    }
+                    Write-Output "Updating SQL Managed Instance '$($mi.name)' in RG '$($mi.resourceGroup)' to license type '$LicenseType'..."
+                    $result = az sql mi update --name $mi.name --resource-group $mi.resourceGroup --license-type $LicenseType -o json | ConvertFrom-Json
+                    $finalStatus += $result
                 }
             }
         }
@@ -623,8 +619,8 @@ foreach ($sub in $subscriptions) {
         try {
             Write-Output "Searching for SQL Instance Pools that require a license update..."
             
-            # Build instance pool query
-            $instancePoolsQuery = "[?licenseType!='${LicenseType}'"
+            # Build instance pool query (skip the passive replicas)
+            $instancePoolsQuery = "[?licenseType!='${LicenseType}' && licenseType!='DR' && hybridSecondaryUsage!='Passive' && state=='Ready'"
             
             # Add resource group filter if specified
             if ($rgFilter) {
@@ -664,11 +660,9 @@ foreach ($sub in $subscriptions) {
                     Location            = $pool.location
                 }
                 if (-not $ReportOnly) {
-                    if ($pool.licenseType -ne "DR"){ #should not modify a DR replica
-                        Write-Output "Updating SQL Instance Pool '$($pool.name)' in RG '$($pool.resourceGroup)' to license type '$LicenseType'..."
-                        $result = az sql instance-pool update --name $pool.name --resource-group $pool.resourceGroup --license-type $LicenseType -o json | ConvertFrom-Json
-                        $finalStatus += $result
-                    }
+                    Write-Output "Updating SQL Instance Pool '$($pool.name)' in RG '$($pool.resourceGroup)' to license type '$LicenseType'..."
+                    $result = az sql instance-pool update --name $pool.name --resource-group $pool.resourceGroup --license-type $LicenseType -o json | ConvertFrom-Json
+                    $finalStatus += $result
                 }
             }
         }
