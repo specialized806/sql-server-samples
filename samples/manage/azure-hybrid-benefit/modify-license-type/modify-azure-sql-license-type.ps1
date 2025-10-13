@@ -313,9 +313,11 @@ foreach ($sub in $subscriptions) {
 
         
                         if (-not $ReportOnly) {
-                            Write-Output "Updating SQL VM '$($sqlvm.name)' in RG '$($sqlvm.resourceGroup)' to license type '$SqlVmLicenseType'..."
-                            $result = az sql vm update -n $sqlvm.name -g $sqlvm.resourceGroup --license-type $SqlVmLicenseType -o json | ConvertFrom-Json
-                            $finalStatus += $result
+                            if ($sqlvm.sqlServerLicenseType -ne "DR") { #should not modify a DR replica
+                                Write-Output "Updating SQL VM '$($sqlvm.name)' in RG '$($sqlvm.resourceGroup)' to license type '$SqlVmLicenseType'..."
+                                $result = az sql vm update -n $sqlvm.name -g $sqlvm.resourceGroup --license-type $SqlVmLicenseType -o json | ConvertFrom-Json
+                                $finalStatus += $result
+                            }
                         }
                     }
                 }
@@ -381,9 +383,11 @@ foreach ($sub in $subscriptions) {
                 }
                 
                 if (-not $ReportOnly) {
-                    Write-Output "Updating SQL Managed Instance '$($mi.name)' in RG '$($mi.resourceGroup)' to license type '$LicenseType'..."
-                    $result = az sql mi update --name $mi.name --resource-group $mi.resourceGroup --license-type $LicenseType -o json | ConvertFrom-Json
-                    $finalStatus += $result
+                    if ($mi.licenseType -ne "DR"){ #should not modify a DR replica
+                        Write-Output "Updating SQL Managed Instance '$($mi.name)' in RG '$($mi.resourceGroup)' to license type '$LicenseType'..."
+                        $result = az sql mi update --name $mi.name --resource-group $mi.resourceGroup --license-type $LicenseType -o json | ConvertFrom-Json
+                        $finalStatus += $result
+                    }
                 }
             }
         }
@@ -660,9 +664,11 @@ foreach ($sub in $subscriptions) {
                     Location            = $pool.location
                 }
                 if (-not $ReportOnly) {
-                    Write-Output "Updating SQL Instance Pool '$($pool.name)' in RG '$($pool.resourceGroup)' to license type '$LicenseType'..."
-                    $result = az sql instance-pool update --name $pool.name --resource-group $pool.resourceGroup --license-type $LicenseType -o json | ConvertFrom-Json
-                    $finalStatus += $result
+                    if ($pool.licenseType -ne "DR"){ #should not modify a DR replica
+                        Write-Output "Updating SQL Instance Pool '$($pool.name)' in RG '$($pool.resourceGroup)' to license type '$LicenseType'..."
+                        $result = az sql instance-pool update --name $pool.name --resource-group $pool.resourceGroup --license-type $LicenseType -o json | ConvertFrom-Json
+                        $finalStatus += $result
+                    }
                 }
             }
         }
