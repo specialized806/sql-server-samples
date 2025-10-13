@@ -154,7 +154,9 @@ if (-not $TenantId) {
 } else {
     Write-Output "Using provided TenantId: $TenantId"
 }
-# Ensure connection with both PowerShell and CLI.
+
+# Ensure connection with both PowerShell and CLI. Use V1 login.
+Update-AzConfig -LoginExperienceV2 Off
 if ($UseManagedIdentity) {
     Connect-Azure ($TenantId, $UseManagedIdentity)
 }else{
