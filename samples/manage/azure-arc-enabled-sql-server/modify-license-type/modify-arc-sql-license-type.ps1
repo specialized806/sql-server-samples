@@ -119,7 +119,8 @@ function Connect-Azure {
     }
     Write-Output "Environment detected: $envType"
 
-    # 2) Ensure Az.PowerShell context
+    # 2) Ensure Az.PowerShell context. Use login V1
+    Update-AzConfig -LoginExperienceV2 Off
     $currentCtx = Get-AzContext -ErrorAction SilentlyContinue
     if ($currentCtx -and $currentCtx.Account) {
         if ($TenantId) {
