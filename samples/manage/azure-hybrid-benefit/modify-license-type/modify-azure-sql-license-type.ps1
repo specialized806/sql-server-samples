@@ -339,8 +339,7 @@ foreach ($sub in $subscriptions) {
         $sqlMIsToUpdate = [System.Collections.ArrayList]::new()
         try {
             
-            Write-Output "Processing SQL Managed Instances that are running to $LicenseType..."
-            
+          
             # Build Managed Instance query
             $miRunningQuery = "[?licenseType!='${LicenseType}' && licenseType!='DR' && hybridSecondaryUsage!='Passive' && state=='Ready'"
 
