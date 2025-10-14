@@ -335,13 +335,13 @@ foreach ($sub in $subscriptions) {
             Write-Error "An error occurred while updating SQL VMs: $_"
         }
 
-        # --- Section: Update SQL Managed Instances (Stopped then Ready) "hybridSecondaryUsage": "Passive"---
+        # --- Section: Update SQL Managed Instances (Stopped then Ready) "
         $sqlMIsToUpdate = [System.Collections.ArrayList]::new()
         try {
             
           
             # Build Managed Instance query
-            $miRunningQuery = "[?licenseType!='${LicenseType}' && licenseType!='DR' && hybridSecondaryUsage!='Passive' && state=='Ready'"
+            $miRunningQuery = "[?licenseType!='${LicenseType}' && state=='Ready'"
 
             # Add resource group filter if specified
             if ($rgFilter) {
@@ -621,7 +621,7 @@ foreach ($sub in $subscriptions) {
             Write-Output "Searching for SQL Instance Pools that require a license update..."
             
             # Build instance pool query (skip the passive replicas)
-            $instancePoolsQuery = "[?licenseType!='${LicenseType}' && licenseType!='DR' && hybridSecondaryUsage!='Passive' && state=='Ready'"
+            $instancePoolsQuery = "[?licenseType!='${LicenseType}' && state=='Ready'"
             
             # Add resource group filter if specified
             if ($rgFilter) {
