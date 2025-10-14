@@ -3,7 +3,7 @@ services: Azure Arc-enabled SQL Server
 platforms: Azure
 author: anosov1960
 ms.author: sashan
-ms.date: 05/01/2025
+ms.date: 10/13/2025
 ---
 
 # About this sample
@@ -14,11 +14,13 @@ ms.date: 05/01/2025
 - **Authors:** Alexander (Sasha) Nosov
 - **Update history:** 
     
-    05/01/2025 - added the consent parameter for teh CSP-managed subscriptions
+    05/01/2025 - added the consent parameter for the CSP-managed subscriptions
 
     05/09/2025 - added *-ReportOnly* and *-TenandId* parameters
 
-    05/13/2025 - added support for a .CSV file with the machine names 
+    05/13/2025 - added support for a .CSV file with the machine names
+
+    10/13/2025 - turn off Azure login V2
 
 # Overview
 
