@@ -111,7 +111,7 @@ The script produces a report listing the affected resources by creating a `Modif
 - Location
 
 > [!NOTE]
-> - If `-ReportOnly` is specified, the report shows the resources that would be affected without the actuall change being applied.
+> - If `-ReportOnly` is specified, the report shows the resources that would be affected without the actual change being applied.
 
 
 # Script execution examples
