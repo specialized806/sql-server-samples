@@ -18,7 +18,7 @@ Use the following command to create policy
 #!/bin/bash
 
 az policy definition create \
-  --name "Paygo-SQLArc" \
+  --name "Paygo-SQLMI" \
   --display-name "Paygo-SQLMI" \
   --description "This Azure Policy ensures that all SQL Managed Instance resources using LicenseType = BasePrice are marked as non-compliant. The remediation task sets LicenseType = LicenseIncluded." \
   --rules @rules.json \
