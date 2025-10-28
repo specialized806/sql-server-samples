@@ -43,7 +43,7 @@ LOCATION="<your-azure-region>"
 # Create policy assignment
 az policy assignment create \
   --name "Paygo-SQLMI-Assign" \
-  --policy "Paygo-SQLArc" \
+  --policy "Paygo-SQLMI" \
   --scope "$SCOPE" \
   --params '{ "effect": { "value": "DeployIfNotExists" } }' \
   --mi-system-assigned \
