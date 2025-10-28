@@ -1,6 +1,6 @@
-# Paygo-SQLArc (Windows only)
+# Paygo-SQLMI 
 
-This Azure Policy ensures that all SQL Arc servers using `LicenseType = Paid` are marked as non-compliant. Servers with `LicenseType = LicenseOnly` are treated as compliant. The remediation task sets `LicenseType = PAYG`.
+This Azure Policy ensures that all SQL Managed Instance resources using `LicenseType = BasePrice` are marked as non-compliant. The remediation task sets `LicenseType = LicenseIncluded`.
 
 Use Azure CLI or PowerShell to create the policy definition:
 
@@ -19,8 +19,8 @@ Use the following command to create policy
 
 az policy definition create \
   --name "Paygo-SQLArc" \
-  --display-name "Paygo-SQLArc" \
-  --description "This Azure Policy ensures that all SQL Arc servers using LicenseType = Paid are marked as non-compliant. Servers with LicenseType = LicenseOnly are treated as compliant. The remediation task sets LicenseType = PAYG." \
+  --display-name "Paygo-SQLMI" \
+  --description "This Azure Policy ensures that all SQL Managed Instance resources using LicenseType = BasePrice are marked as non-compliant. The remediation task sets LicenseType = LicenseIncluded." \
   --rules @rules.json \
   --params @params.json \
   --mode Indexed \
@@ -42,7 +42,7 @@ LOCATION="<your-azure-region>"
 
 # Create policy assignment
 az policy assignment create \
-  --name "Paygo-SQLArc-Assign" \
+  --name "Paygo-SQLMI-Assign" \
   --policy "Paygo-SQLArc" \
   --scope "$SCOPE" \
   --params '{ "effect": { "value": "DeployIfNotExists" } }' \
@@ -62,8 +62,8 @@ Us the following command to create a remediation task
 RG_NAME="<your-resoure-group>"
 
 az policy remediation create \
-  --name "Remediate-Paygo-SQLArc" \
-  --policy-assignment "Paygo-SQLArc-Assign" \
+  --name "Remediate-Paygo-SQLMI" \
+  --policy-assignment "Paygo-SQLMI-Assign" \
   --resource-group "$RG_NAME" \
   --resource-discovery-mode ReEvaluateCompliance
 ```
