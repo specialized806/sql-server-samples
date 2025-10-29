@@ -1,2 +1,0 @@
-"TenantID","SubID","ResourceName","ResourceType","Status","OriginalLicenseType","ResourceGroup","Location"
-"72f988bf-86f1-41af-91ab-2d7cd011db47","fa58cf66-caaf-4ba9-875d-f310d3694845","SQL2019Arc","Microsoft.SqlVirtualMachine/sqlVirtualMachines","VM running","PAYG","ajayj","westus2"

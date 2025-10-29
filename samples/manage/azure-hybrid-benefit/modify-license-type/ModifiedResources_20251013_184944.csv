@@ -1,7 +1,0 @@
-"TenantID","SubID","ResourceName","ResourceType","Status","OriginalLicenseType","ResourceGroup","Location"
-"72f988bf-86f1-41af-91ab-2d7cd011db47","fa58cf66-caaf-4ba9-875d-f310d3694845","SQL2012EEArc","Microsoft.SqlVirtualMachine/sqlVirtualMachines","VM running","AHUB","ajayj","westus2"
-"72f988bf-86f1-41af-91ab-2d7cd011db47","fa58cf66-caaf-4ba9-875d-f310d3694845","SQL2022EE","Microsoft.SqlVirtualMachine/sqlVirtualMachines","VM running","AHUB","ajayj","westus2"
-"72f988bf-86f1-41af-91ab-2d7cd011db47","fa58cf66-caaf-4ba9-875d-f310d3694845","sql2022rtm","Microsoft.SqlVirtualMachine/sqlVirtualMachines","VM running","AHUB","ajayj","westus2"
-"72f988bf-86f1-41af-91ab-2d7cd011db47","fa58cf66-caaf-4ba9-875d-f310d3694845","sql2025devstd","Microsoft.SqlVirtualMachine/sqlVirtualMachines","VM running","AHUB","ajayj","westus2"
-"72f988bf-86f1-41af-91ab-2d7cd011db47","fa58cf66-caaf-4ba9-875d-f310d3694845","ajayjsqlmi","Microsoft.Sql/managedInstances","Ready","BasePrice","ajayj","westus2"
-"72f988bf-86f1-41af-91ab-2d7cd011db47","fa58cf66-caaf-4ba9-875d-f310d3694845","AdventureworksLT","Microsoft.Sql/servers/databases","Online","BasePrice","ajayj","westus2"

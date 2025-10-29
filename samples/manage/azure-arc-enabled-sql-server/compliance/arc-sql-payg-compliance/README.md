@@ -1,6 +1,6 @@
-# Paygo-SQLMI 
+# Paygo-SQLArc (Windows only)
 
-This Azure Policy ensures that all SQL Managed Instance resources using `LicenseType = BasePrice` are marked as non-compliant. The remediation task sets `LicenseType = LicenseIncluded`.
+This Azure Policy ensures that all SQL Arc servers using `LicenseType = Paid` are marked as non-compliant. Servers with `LicenseType = LicenseOnly` are treated as compliant. The remediation task sets `LicenseType = PAYG`.
 
 Use Azure CLI or PowerShell to create the policy definition:
 
@@ -14,8 +14,8 @@ Use Azure CLI or PowerShell to create the policy definition:
 
 ```PowerShell
 
-curl https://raw.githubusercontent.com/microsoft/sql-server-samples/refs/heads/master/samples/manage/azure-hybrid-benefit/compliance/azure-sql-payg-compliance/sql-mi-payg-compliance/params.json -o params.json
-curl https://raw.githubusercontent.com/microsoft/sql-server-samples/refs/heads/master/samples/manage/azure-hybrid-benefit/compliance/azure-sql-payg-compliance/sql-mi-payg-compliance/rules.json -o rules.json
+curl https://raw.githubusercontent.com/microsoft/sql-server-samples/refs/heads/master/samples/manage/azure-arc-enabled-sql-server/compliance/arc-sql-payg-compliance/params.json -o params.json
+curl https://raw.githubusercontent.com/microsoft/sql-server-samples/refs/heads/master/samples/manage/azure-arc-enabled-sql-server/compliance/arc-sql-payg-compliance/rules.json -o rules.json
 
 ```
 
@@ -26,12 +26,12 @@ Use the following command to create policy
 ```PowerShell
 
 $SubId    = "<your-subscription-id>"
-$PolicyName = "Paygo-SQLMI"
+$PolicyName = "Paygo-SQLArc"
 
 az policy definition create `
   --name $PolicyName `
   --display-name $PolicyName `
-  --description "This Azure Policy ensures that all SQL Managed Instance resources using LicenseType = BasePrice are marked as non-compliant. The remediation task sets LicenseType = LicenseIncluded" `
+  --description "This Azure Policy ensures that all SQL Arc servers using LicenseType = Paid are marked as non-compliant. Servers with LicenseType = LicenseOnly are treated as compliant. The remediation task sets LicenseType = PAYG." `
   --rules "@rules.json" `
   --params "@params.json" `
   --mode Indexed `
@@ -58,8 +58,8 @@ if ([string]::IsNullOrWhiteSpace($RgName)) {
 az account set --subscription $SubId
 
 az policy assignment create `
-  --name "Paygo-SQLMI-Assign" `
-  --policy "Paygo-SQLMI" `
+  --name "Paygo-SQLArc-Assign" `
+  --policy "Paygo-SQLArc" `
   --scope "$Scope" `
   --params '{ "effect": { "value": "DeployIfNotExists" } }' `
   --mi-system-assigned `
@@ -75,8 +75,8 @@ Use the following command to create a remediation task
 
 ```PowerShell
 
-$RemediationName = "Remediate-Paygo-SQLMI"
-$PolicyAssignmentName = "Paygo-SQLMI-Assign"
+$RemediationName = "Remediate-Paygo-SQLArc"
+$PolicyAssignmentName = "Paygo-SQLArc-Assign"
 $SubId    = "<your-subscription-id>"
 $RgName   = "<your-resource-group>"
 
@@ -102,7 +102,7 @@ if ([string]::IsNullOrWhiteSpace($RgName)) {
 
 ```PowerShell
 
-$RemediationName = "Remediate-Paygo-SQLMI"
+$RemediationName = "Remediate-Paygo-SQLArc"
 $RgName = "<your-resource-group>"
 $SubId = "<your-subscription-id>"
 
