@@ -1,0 +1,27 @@
+{
+  "effect": {
+    "type": "String",
+    "metadata": {
+      "displayName": "Effect",
+      "description": "Enable or disable the execution of the policy."
+    },
+    "allowedValues": [
+      "DeployIfNotExists",
+      "Disabled"
+    ],
+    "defaultValue": "DeployIfNotExists"
+  },
+  "requiredLicenseType": {
+    "type": "String",
+    "metadata": {
+      "displayName": "Required License Type",
+      "description": "The license type that SQL Arc servers must have to be considered compliant."
+    },
+    "allowedValues": [
+      "PAYG",
+      "Paid",
+      "LicenseOnly"
+    ],
+    "defaultValue": "PAYG"
+  }
+}
