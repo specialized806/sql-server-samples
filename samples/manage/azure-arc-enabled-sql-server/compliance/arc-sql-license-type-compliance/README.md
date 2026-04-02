@@ -1,4 +1,4 @@
-# LicenceType-SQLArc
+# LicenseType-SQLArc
 
 This Azure Policy ensures that all SQL Arc servers have the required `LicenseType` value. Servers that do not match the required license type are marked as non-compliant. The remediation task sets `LicenseType` to the value specified by the `requiredLicenseType` parameter.
 
@@ -14,8 +14,8 @@ Use Azure CLI or PowerShell to create the policy definition.
 
 ```PowerShell
 
-curl https://raw.githubusercontent.com/microsoft/sql-server-samples/refs/heads/master/samples/manage/azure-arc-enabled-sql-server/compliance/arc-sql-licence-type-compliance/params.json -o params.json
-curl https://raw.githubusercontent.com/microsoft/sql-server-samples/refs/heads/master/samples/manage/azure-arc-enabled-sql-server/compliance/arc-sql-licence-type-compliance/rules.json -o rules.json
+curl https://raw.githubusercontent.com/microsoft/sql-server-samples/refs/heads/master/samples/manage/azure-arc-enabled-sql-server/compliance/arc-sql-license-type-compliance/params.json -o params.json
+curl https://raw.githubusercontent.com/microsoft/sql-server-samples/refs/heads/master/samples/manage/azure-arc-enabled-sql-server/compliance/arc-sql-license-type-compliance/rules.json -o rules.json
 
 ```
 
@@ -26,7 +26,7 @@ Use the following command to create policy
 ```PowerShell
 
 $SubId      = "<your-subscription-id>"
-$PolicyName = "LicenceType-SQLArc"
+$PolicyName = "LicenseType-SQLArc"
 
 az policy definition create `
   --name $PolicyName `
@@ -59,8 +59,8 @@ if ([string]::IsNullOrWhiteSpace($RgName)) {
 az account set --subscription $SubId
 
 az policy assignment create `
-  --name "LicenceType-SQLArc-Assign" `
-  --policy "LicenceType-SQLArc" `
+  --name "LicenseType-SQLArc-Assign" `
+  --policy "LicenseType-SQLArc" `
   --scope "$Scope" `
   --params "{ \"effect\": { \"value\": \"DeployIfNotExists\" }, \"requiredLicenseType\": { \"value\": \"$RequiredLicenseType\" } }" `
   --mi-system-assigned `
@@ -76,8 +76,8 @@ Use the following command to create a remediation task
 
 ```PowerShell
 
-$RemediationName      = "Remediate-LicenceType-SQLArc"
-$PolicyAssignmentName = "LicenceType-SQLArc-Assign"
+$RemediationName      = "Remediate-LicenseType-SQLArc"
+$PolicyAssignmentName = "LicenseType-SQLArc-Assign"
 $SubId                = "<your-subscription-id>"
 $RgName               = "<your-resource-group>"
 
@@ -103,7 +103,7 @@ if ([string]::IsNullOrWhiteSpace($RgName)) {
 
 ```PowerShell
 
-$RemediationName = "Remediate-LicenceType-SQLArc"
+$RemediationName = "Remediate-LicenseType-SQLArc"
 $RgName          = "<your-resource-group>"
 $SubId           = "<your-subscription-id>"
 

@@ -1,6 +1,6 @@
 {
   "properties": {
-    "displayName": "LicenceType-SQLArc",
+    "displayName": "LicenseType-SQLArc",
     "policyType": "Custom",
     "mode": "Indexed",
     "description": "Policy to ensure all SQL Arc servers have the required LicenseType. Servers that do not match are marked as non-compliant and remediated to the required license type.",
