@@ -60,8 +60,9 @@ else {
 $PolicyDefinitionName = "activate-sql-arc-$LicenseToken-$PlatformToken"
 $PolicyAssignmentName = "sql-arc-$LicenseToken-$PlatformToken"
 
-$PolicyDefinitionDisplayName = "Configure Arc-enabled SQL Server ($PlatformLabel) license type"
-$PolicyAssignmentDisplayName = "Configure Arc-enabled SQL Server ($PlatformLabel) license type"
+$LicenseTypeLabel = if ($TargetLicenseType -eq 'PAYG') { 'Pay-as-you-go' } else { 'License With Software Assurance' }
+$PolicyDefinitionDisplayName = "Configure Arc-enabled SQL Server ($PlatformLabel) license type to '$LicenseTypeLabel'"
+$PolicyAssignmentDisplayName = "Configure Arc-enabled SQL Server ($PlatformLabel) license type to '$LicenseTypeLabel'"
 
 #Create policy definition
 New-AzPolicyDefinition `
