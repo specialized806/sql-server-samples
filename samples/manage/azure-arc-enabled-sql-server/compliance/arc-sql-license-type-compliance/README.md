@@ -29,12 +29,25 @@ Parameter reference:
 
 Definition and assignment creation:
 
-1. Clone the repo.
+1. Download the required files.
 
 ```powershell
-git clone https://github.com/microsoft/sql-server-samples.git
-cd sql-server-samples/samples/manage/azure-arc-enabled-sql-server/compliance/arc-sql-license-type-compliance
+# Optional: create and enter a local working directory
+mkdir sql-arc-lt-compliance
+cd sql-arc-lt-compliance
 ```
+
+```powershell
+$baseUrl = "https://raw.githubusercontent.com/microsoft/sql-server-samples/master/samples/manage/azure-arc-enabled-sql-server/compliance/arc-sql-license-type-compliance"
+
+New-Item -ItemType Directory -Path policy, scripts -Force | Out-Null
+
+curl -sLo policy/azurepolicy.json "$baseUrl/policy/azurepolicy.json"
+curl -sLo scripts/deployment.ps1 "$baseUrl/scripts/deployment.ps1"
+curl -sLo scripts/start-remediation.ps1 "$baseUrl/scripts/start-remediation.ps1"
+```
+
+> **Note:** On Windows PowerShell 5.1, `curl` is an alias for `Invoke-WebRequest`. Use `curl.exe` instead, or run the commands in PowerShell 7+.
 
 2. Login to Azure.
 
