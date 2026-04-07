@@ -109,13 +109,29 @@ if (-not $SkipManagedIdentityRoleAssignment) {
       -ErrorAction SilentlyContinue
 
     if (-not $existingRole) {
-      New-AzRoleAssignment `
-        -ObjectId $principalId `
-        -RoleDefinitionName $requiredRoleName `
-        -Scope $AssignmentScope `
-        -ErrorAction Stop | Out-Null
+      $maxRetries = 5
+      $retryDelay = 10
+      for ($i = 1; $i -le $maxRetries; $i++) {
+        try {
+          New-AzRoleAssignment `
+            -ObjectId $principalId `
+            -RoleDefinitionName $requiredRoleName `
+            -Scope $AssignmentScope `
+            -ErrorAction Stop | Out-Null
 
-      Write-Output "Assigned '$requiredRoleName' to policy assignment identity ($principalId) at scope $AssignmentScope."
+          Write-Output "Assigned '$requiredRoleName' to policy assignment identity ($principalId) at scope $AssignmentScope."
+          break
+        }
+        catch {
+          if ($_.Exception.Message -match 'Conflict') {
+            Write-Output "Assigned '$requiredRoleName' to policy assignment identity ($principalId) at scope $AssignmentScope (confirmed after retry)."
+            break
+          }
+          if ($i -eq $maxRetries) { throw }
+          Write-Output "Waiting ${retryDelay}s for identity replication before assigning '$requiredRoleName' ($i/$maxRetries)..."
+          Start-Sleep -Seconds $retryDelay
+        }
+      }
     }
     else {
       Write-Output "Policy assignment identity already has '$requiredRoleName' at scope $AssignmentScope."
