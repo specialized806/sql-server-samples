@@ -2,7 +2,7 @@
 
 This repo deploys and remediates a custom Azure Policy that configures and enforces Arc-enabled SQL Server extension `LicenseType` to a selected target value (for example `Paid` or `PAYG`).
 
-## What Is In This Repo
+## What Is In This Folder
 
 - `policy/azurepolicy.json`: Custom policy definition (DeployIfNotExists).
 - `scripts/deployment.ps1`: Creates/updates the policy definition and policy assignment.
@@ -178,10 +178,3 @@ Use one of these options:
 - Re-run `scripts/deployment.ps1` (default behavior assigns `Resource Policy Contributor` automatically).
 - Re-run `scripts/deployment.ps1` (default behavior assigns required roles automatically).
 - Run `scripts/start-remediation.ps1 -GrantMissingPermissions` (checks and assigns missing required roles before remediation).
-
-## Screenshots
-
-![overview](./docs/screenshots/overview.png)
-![pre-policy](./docs/screenshots/pre-policy.png)
-![remediation](./docs/screenshots/remediation.png)
-![postpolicy](./docs/screenshots/post-policy.png)
